@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>실시간 워드클라우드 - EUNACLASS</title>
+  <meta name="description" content="참여 코드를 입력하고 여러분의 생각을 단어로 남겨보세요." />
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <div class="page-title">
+    <h1>☁️ 실시간 워드클라우드</h1>
+    <p>화면에 보이는 코드를 입력하고 참여하세요.</p>
+  </div>
+
+  <main>
+    <div class="container">
+      <div class="card">
+        <h2>🙋 참여하기</h2>
+        <div class="field">
+          <label for="joinCode">참여 코드 (4자리)</label>
+          <input id="joinCode" class="input code-input" maxlength="4" placeholder="ABCD" autocomplete="off" autofocus />
+        </div>
+        <button id="joinBtn" class="btn btn-primary btn-block">참여하기</button>
+        <p id="joinStatus" class="status-msg"></p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer__line">
+      &copy; 2026 <a href="./admin.html" id="adminTrigger" style="text-decoration:none;color:inherit">EUNACLASS</a>
+      <span class="footer__sep">&middot;</span>
+      AI Learning Tools for Education
+      <span class="footer__sep">&middot;</span>
+      <a href="mailto:florss58@gmail.com">florss58@gmail.com</a>
+    </p>
+    <p class="footer__line">모든 콘텐츠의 무단 복제·배포를 금합니다.</p>
+  </footer>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="./js/firebase-config.js"></script>
+  <script src="./js/common.js"></script>
+  <script>
+    const db = initFirebase();
+
+    const joinCodeInput = document.getElementById("joinCode");
+    const joinStatus = document.getElementById("joinStatus");
+
+    // 입력하면 자동으로 대문자 표시
+    joinCodeInput.addEventListener("input", () => {
+      joinCodeInput.value = joinCodeInput.value.toUpperCase();
+    });
+
+    document.getElementById("joinBtn").addEventListener("click", async () => {
+      if (!db) return;
+      const code = joinCodeInput.value.trim().toUpperCase();
+      if (code.length !== 4) {
+        joinStatus.textContent = "4자리 코드를 입력해 주세요.";
+        joinStatus.className = "status-msg error";
+        return;
+      }
+      const snap = await sessionRef(db, code).child("meta").get();
+      if (!snap.exists()) {
+        joinStatus.textContent = "해당 코드의 세션이 없습니다. 코드를 다시 확인해 주세요.";
+        joinStatus.className = "status-msg error";
+        return;
+      }
+      location.href = "join.html?code=" + encodeURIComponent(code);
+    });
+
+    joinCodeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("joinBtn").click();
+    });
+  </script>
+</body>
+</html>

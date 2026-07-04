@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>발표 화면 - 실시간 워드클라우드</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body class="present-page">
+  <div class="present-wrap">
+    <header class="present-header">
+      <h1 id="question" class="present-question">불러오는 중...</h1>
+      <div class="present-stats">
+        <span>참여 <strong id="participantCount">0</strong>명</span>
+        <span>단어 <strong id="entryCount">0</strong>개</span>
+      </div>
+    </header>
+
+    <canvas id="cloudCanvas"></canvas>
+
+    <aside class="present-side" id="sidePanel" title="클릭하면 크게 보여요">
+      <div id="qrBox"></div>
+      <div class="join-code" id="joinCode">----</div>
+      <div class="join-hint">QR 스캔 또는 홈에서<br />코드 입력으로 참여</div>
+      <div class="join-hint" style="color:var(--accent)">👆 클릭하면 크게</div>
+    </aside>
+
+    <div class="present-toolbar">
+      <button id="qrBigBtn" class="tool-btn">📱 QR 크게</button>
+      <button id="pauseBtn" class="tool-btn">⏸ 일시정지</button>
+      <button id="themeBtn" class="tool-btn">🌙 어둡게</button>
+      <button id="qrToggleBtn" class="tool-btn">QR 숨기기</button>
+      <button id="saveBtn" class="tool-btn">💾 PNG 저장</button>
+      <button id="resetBtn" class="tool-btn">🗑 초기화</button>
+      <div class="toolbar-spacer"></div>
+      <span class="latest-word" id="latestWord"></span>
+    </div>
+  </div>
+
+  <!-- QR 크게 보기 오버레이 -->
+  <div id="qrFocus" class="qr-focus hidden">
+    <p class="qr-focus-title" id="qrFocusQuestion"></p>
+    <div id="qrBoxBig" class="qr-focus-box"></div>
+    <div class="qr-focus-code" id="qrFocusCode">----</div>
+    <p class="qr-focus-hint">휴대폰 카메라로 QR을 찍거나, 접속 후 위 코드를 입력하세요</p>
+    <p class="qr-focus-close-hint">화면을 클릭하면 워드클라우드로 돌아갑니다</p>
+  </div>
+
+  <!-- 단어 클릭 시 강조 오버레이 -->
+  <div id="wordFocus" class="word-focus hidden">
+    <div class="focus-word" id="focusWord"></div>
+    <div class="focus-count" id="focusCount"></div>
+    <div class="focus-actions">
+      <button id="hideWordBtn" class="btn btn-ghost" style="color:#fff;border-color:#fff">🚫 이 단어 숨기기</button>
+      <button id="closeFocusBtn" class="btn btn-primary">닫기</button>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="./js/firebase-config.js"></script>
+  <script src="./js/common.js"></script>
+  <script>
+    const db = initFirebase();
+    const code = getCodeFromUrl();
+
+    const canvas = document.getElementById("cloudCanvas");
+    const questionEl = document.getElementById("question");
+    const participantCountEl = document.getElementById("participantCount");
+    const entryCountEl = document.getElementById("entryCount");
+    const latestWordEl = document.getElementById("latestWord");
+
+    // 밝은/어두운 테마별 단어 색상 팔레트
+    const PALETTE_LIGHT = ["#4f6ef7", "#e5484d", "#1a9e55", "#e8871e", "#8e4ff7", "#0ea5b7", "#d6409f"];
+    const PALETTE_DARK = ["#8da2ff", "#ff8f92", "#5ee69a", "#ffc46b", "#c9a5ff", "#6be5f5", "#ff9ed8"];
+
+    const state = {
+      counts: new Map(),     // word -> count
+      clients: new Set(),    // 고유 참여자
+      hidden: new Set(),     // 숨긴 단어
+      totalEntries: 0,
+      paused: false,
+      dirty: false,
+      dark: false
+    };
+
+    let renderTimer = null;
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+      scheduleRender();
+    }
+
+    function scheduleRender() {
+      if (state.paused) { state.dirty = true; return; }
+      clearTimeout(renderTimer);
+      renderTimer = setTimeout(renderCloud, 400);
+    }
+
+    function visibleList() {
+      return [...state.counts.entries()]
+        .filter(([word]) => !state.hidden.has(word))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 150);
+    }
+
+    function renderCloud() {
+      state.dirty = false;
+      const list = visibleList();
+      canvas.style.opacity = "1";
+      if (list.length === 0) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = state.dark ? "#4a5378" : "#b8bfd4";
+        ctx.font = "600 28px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("단어가 도착하면 여기에 나타납니다 ☁️", canvas.width / 2, canvas.height / 2);
+        return;
+      }
+
+      canvas.style.opacity = "0.45"; // 새 배치 렌더링 시 부드러운 전환
+      const maxCount = list[0][1];
+      const palette = state.dark ? PALETTE_DARK : PALETTE_LIGHT;
+      // 화면 크기와 최대 빈도에 맞춰 글자 크기 계산
+      const base = Math.min(canvas.width, canvas.height);
+      const factor = (base / 9) / Math.sqrt(maxCount);
+
+      WordCloud(canvas, {
+        list,
+        gridSize: Math.max(8, Math.round(base / 70)),
+        weightFactor: (count) => Math.max(14, Math.sqrt(count) * factor),
+        fontFamily: '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif',
+        fontWeight: 700,
+        color: () => palette[Math.floor(Math.random() * palette.length)],
+        backgroundColor: state.dark ? "#101423" : "#ffffff",
+        rotateRatio: 0.15,
+        rotationSteps: 2,
+        shuffle: false,
+        drawOutOfBound: false,
+        shrinkToFit: true,
+        click: (item) => openFocus(item[0], item[1])
+      });
+    }
+
+    function updateStats() {
+      participantCountEl.textContent = state.clients.size;
+      entryCountEl.textContent = state.totalEntries;
+    }
+
+    /* ── 단어 강조 오버레이 ── */
+    const focusOverlay = document.getElementById("wordFocus");
+    let focusedWord = "";
+
+    function openFocus(word, count) {
+      focusedWord = word;
+      document.getElementById("focusWord").textContent = word;
+      document.getElementById("focusCount").textContent = `${count}명이 이 단어를 적었어요`;
+      focusOverlay.classList.remove("hidden");
+    }
+
+    document.getElementById("closeFocusBtn").addEventListener("click", () => focusOverlay.classList.add("hidden"));
+    focusOverlay.addEventListener("click", (e) => { if (e.target === focusOverlay) focusOverlay.classList.add("hidden"); });
+
+    document.getElementById("hideWordBtn").addEventListener("click", () => {
+      if (focusedWord) sessionRef(db, code).child("hidden").child(focusedWord).set(true);
+      focusOverlay.classList.add("hidden");
+    });
+
+    /* ── 툴바 ── */
+    const pauseBtn = document.getElementById("pauseBtn");
+    pauseBtn.addEventListener("click", () => {
+      state.paused = !state.paused;
+      pauseBtn.textContent = state.paused ? "▶ 재개" : "⏸ 일시정지";
+      pauseBtn.classList.toggle("active", state.paused);
+      if (!state.paused && state.dirty) scheduleRender();
+    });
+
+    const themeBtn = document.getElementById("themeBtn");
+    themeBtn.addEventListener("click", () => {
+      state.dark = !state.dark;
+      document.body.classList.toggle("dark", state.dark);
+      themeBtn.textContent = state.dark ? "☀️ 밝게" : "🌙 어둡게";
+      renderCloud();
+    });
+
+    /* ── QR 크게 보기 ── */
+    const qrFocus = document.getElementById("qrFocus");
+    let bigQrRendered = false;
+
+    function openQrFocus() {
+      if (!bigQrRendered) {
+        const size = Math.min(520, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.52));
+        new QRCode(document.getElementById("qrBoxBig"), {
+          text: joinUrlFor(code),
+          width: size,
+          height: size,
+          correctLevel: QRCode.CorrectLevel.M
+        });
+        bigQrRendered = true;
+      }
+      document.getElementById("qrFocusQuestion").textContent = questionEl.textContent;
+      document.getElementById("qrFocusCode").textContent = code;
+      qrFocus.classList.remove("hidden");
+    }
+
+    document.getElementById("qrBigBtn").addEventListener("click", openQrFocus);
+    document.getElementById("sidePanel").addEventListener("click", openQrFocus);
+    qrFocus.addEventListener("click", () => qrFocus.classList.add("hidden"));
+
+    const qrToggleBtn = document.getElementById("qrToggleBtn");
+    qrToggleBtn.addEventListener("click", () => {
+      const panel = document.getElementById("sidePanel");
+      const hidden = panel.classList.toggle("hidden");
+      qrToggleBtn.textContent = hidden ? "QR 보이기" : "QR 숨기기";
+    });
+
+    document.getElementById("saveBtn").addEventListener("click", () => {
+      const link = document.createElement("a");
+      link.download = `wordcloud_${code}_${new Date().toISOString().slice(0, 10)}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", async () => {
+      if (!confirm("모든 제출 단어를 삭제할까요? 되돌릴 수 없습니다.")) return;
+      await sessionRef(db, code).child("entries").remove();
+      await sessionRef(db, code).child("hidden").remove();
+      state.counts.clear();
+      state.clients.clear();
+      state.hidden.clear();
+      state.totalEntries = 0;
+      latestWordEl.textContent = "";
+      updateStats();
+      renderCloud();
+    });
+
+    /* ── 실시간 구독 ── */
+    async function init() {
+      if (!db) return;
+      if (!code) { questionEl.textContent = "세션 코드가 없습니다."; return; }
+
+      const snap = await sessionRef(db, code).child("meta").get();
+      if (!snap.exists()) { questionEl.textContent = "세션을 찾을 수 없습니다."; return; }
+      questionEl.textContent = snap.val().q;
+      document.title = snap.val().q + " - 실시간 워드클라우드";
+      document.getElementById("joinCode").textContent = code;
+
+      canvas.addEventListener("wordcloudstop", () => { canvas.style.opacity = "1"; });
+
+      new QRCode(document.getElementById("qrBox"), {
+        text: joinUrlFor(code),
+        width: 110,
+        height: 110,
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      sessionRef(db, code).child("entries").on("child_added", (child) => {
+        const entry = child.val();
+        if (!entry || typeof entry.w !== "string") return;
+        state.counts.set(entry.w, (state.counts.get(entry.w) || 0) + 1);
+        if (entry.c) state.clients.add(entry.c);
+        state.totalEntries += 1;
+        latestWordEl.innerHTML = `방금 도착: <strong>${escapeHtml(entry.w)}</strong>`;
+        updateStats();
+        scheduleRender();
+      });
+
+      sessionRef(db, code).child("hidden").on("value", (snapshot) => {
+        state.hidden = new Set(Object.keys(snapshot.val() || {}));
+        scheduleRender();
+      });
+
+      resizeCanvas();
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    init();
+  </script>
+</body>
+</html>

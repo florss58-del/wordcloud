@@ -1,0 +1,23 @@
+# 실시간 워드클라우드 (EUNACLASS)
+
+수업용 실시간 참여형 워드클라우드. 정적 HTML/JS + Firebase Realtime Database.
+
+- **배포(프로덕션)**: https://wordcloud-mu.vercel.app (Vercel scope: `florss58-dels-projects`, 프로젝트명 `wordcloud`)
+  - 재배포: `npx vercel deploy --prod --yes --scope florss58-dels-projects`
+- **Firebase**: 프로젝트 `euna-wordcloud`, RTDB `asia-southeast1`, 설정은 `js/firebase-config.js`
+- **화면**: `index.html`(교육생 코드 입력) / `admin.html`(강사: 세션 생성·내 세션 목록) / `present.html`(발표) / `join.html`(단어 제출)
+- **세션 이름 규칙**: `YYYYMMDD_수업명` (admin에서 날짜 자동 채움)
+- **데이터**: `sessions/{4자리코드}/{meta,entries,hidden}` — meta는 생성 후 수정·삭제 불가(규칙), 초기화는 entries/hidden만 삭제
+- **한국어 처리**: `js/korean.js` — 조사·어미 제거, 보호 단어, 금칙어(욕설)/장난 단어(메롱·바보 등) 필터
+- **로컬 테스트**: `npx serve . -l 3000` (serve.json의 `cleanUrls:false` 필수 — 켜면 `?code=` 쿼리 유실)
+
+## 추후 작업 (TODO)
+
+- [ ] **결과 보기 + CSV 내보내기**: 발표 화면에 "📋 결과 보기" 버튼 추가 → 단어 빈도표(순위·단어·횟수) 표시 + CSV(엑셀) 다운로드. 수업 후 분석용. (2026-07-04 사용자 승인, 추후 진행)
+
+## 주의사항
+
+- Firebase 보안 규칙에서 entries의 `w` 길이 제한은 **40자** (문구 모드 30자 + 여유)
+- `join.html`은 세션의 `meta.mode`(word/phrase)에 따라 입력 검증이 달라짐
+- 발표 화면 QR 클릭(또는 "📱 QR 크게" 버튼) → 전체 화면 QR
+- UI 문구 스타일: 고정 안내문은 마침표 생략, 동작 결과 알림은 마침표 사용

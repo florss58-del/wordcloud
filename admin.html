@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>세션 만들기 (강사용) - 실시간 워드클라우드</title>
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="./css/style.css" />
+  <style>
+    .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .session-item {
+      display: flex; align-items: center; gap: 0.8rem;
+      border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 0.9rem;
+    }
+    .session-info { flex: 1; min-width: 0; }
+    .session-name { font-weight: 700; font-size: 0.95rem; }
+    .session-q {
+      font-size: 0.82rem; color: var(--muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .session-code-badge {
+      font-weight: 800; letter-spacing: 0.15em; color: var(--accent);
+      background: #eef1fd; border-radius: 8px; padding: 0.3rem 0.6rem; font-size: 0.9rem;
+    }
+    .session-actions { display: flex; gap: 0.4rem; }
+    .session-actions .tool-btn { white-space: nowrap; }
+    .empty-list { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 1rem 0; }
+    @media (max-width: 640px) {
+      .session-item { flex-wrap: wrap; }
+      .session-info { flex-basis: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-title">
+    <h1>🎤 세션 만들기</h1>
+    <p>세션 이름과 질문을 입력하면 참여 코드와 QR이 자동으로 생성됩니다.</p>
+  </div>
+
+  <main>
+    <div class="container">
+      <div class="card">
+        <div class="field">
+          <label for="sessionName">세션 이름 (관리용 — 날짜_수업명)</label>
+          <input id="sessionName" class="input" maxlength="40" placeholder="20260712_AI기초" />
+        </div>
+        <div class="field">
+          <label for="question">질문 (교육생에게 보여질 주제)</label>
+          <input id="question" class="input" maxlength="80" placeholder="예) 오늘 수업에서 기대하는 것을 한 단어로 적어주세요" />
+        </div>
+        <div class="option-row" style="display:flex;gap:0.8rem">
+          <div class="field" style="flex:1">
+            <label for="inputMode">입력 형식</label>
+            <select id="inputMode" class="select">
+              <option value="word" selected>단어 (조사 정리·집계, 12자)</option>
+              <option value="phrase">짧은 문구 (띄어쓰기 허용, 30자)</option>
+            </select>
+          </div>
+          <div class="field" style="flex:1">
+            <label for="maxPerUser">1인당 제출 개수</label>
+            <select id="maxPerUser" class="select">
+              <option value="1">1개</option>
+              <option value="2">2개</option>
+              <option value="3" selected>3개</option>
+              <option value="5">5개</option>
+            </select>
+          </div>
+        </div>
+        <button id="createBtn" class="btn btn-primary btn-block">세션 만들고 발표 화면 열기</button>
+        <p id="createStatus" class="status-msg"></p>
+      </div>
+
+      <div class="card">
+        <h2>📂 내 세션 목록</h2>
+        <div id="sessionList" class="session-list"></div>
+        <p class="form-hint" style="margin-top:0.8rem">
+          목록은 이 브라우저에 저장됩니다. 다른 컴퓨터에서는 아래 "코드로 열기"를 사용하면 목록에 다시 추가됩니다.
+        </p>
+      </div>
+
+      <div class="card">
+        <h2>🔑 코드로 열기</h2>
+        <div class="field">
+          <input id="reopenCode" class="input code-input" maxlength="4" placeholder="ABCD" autocomplete="off" />
+        </div>
+        <button id="reopenBtn" class="btn btn-ghost btn-block">발표 화면 열기</button>
+        <p id="reopenStatus" class="status-msg"></p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer__line">
+      &copy; 2026 EUNACLASS
+      <span class="footer__sep">&middot;</span>
+      AI Learning Tools for Education
+      <span class="footer__sep">&middot;</span>
+      <a href="./index.html">참여자 홈으로</a>
+    </p>
+  </footer>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="./js/firebase-config.js"></script>
+  <script src="./js/common.js"></script>
+  <script>
+    const db = initFirebase();
+    const createStatus = document.getElementById("createStatus");
+    const reopenStatus = document.getElementById("reopenStatus");
+    const STORAGE_KEY = "wc_my_sessions";
+
+    /* ── 내 세션 목록 (localStorage) ── */
+    function loadMySessions() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+      catch (_) { return []; }
+    }
+
+    function saveMySession(entry) {
+      const sessions = loadMySessions().filter((s) => s.code !== entry.code);
+      sessions.unshift(entry);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions.slice(0, 100)));
+    }
+
+    function removeMySession(code) {
+      const sessions = loadMySessions().filter((s) => s.code !== code);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+      renderSessionList();
+    }
+
+    function formatDate(timestamp) {
+      if (!timestamp) return "";
+      const d = new Date(timestamp);
+      return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function renderSessionList() {
+      const listEl = document.getElementById("sessionList");
+      const sessions = loadMySessions();
+      if (sessions.length === 0) {
+        listEl.innerHTML = '<p class="empty-list">아직 만든 세션이 없습니다.</p>';
+        return;
+      }
+      listEl.innerHTML = "";
+      sessions.forEach((s) => {
+        const item = document.createElement("div");
+        item.className = "session-item";
+
+        const info = document.createElement("div");
+        info.className = "session-info";
+        const name = document.createElement("div");
+        name.className = "session-name";
+        name.textContent = s.name || "(이름 없음)";
+        const q = document.createElement("div");
+        q.className = "session-q";
+        q.textContent = `${formatDate(s.created)} · ${s.q || ""}`;
+        info.appendChild(name);
+        info.appendChild(q);
+
+        const badge = document.createElement("span");
+        badge.className = "session-code-badge";
+        badge.textContent = s.code;
+
+        const actions = document.createElement("div");
+        actions.className = "session-actions";
+        const openBtn = document.createElement("button");
+        openBtn.className = "tool-btn";
+        openBtn.textContent = "발표 열기";
+        openBtn.addEventListener("click", () => {
+          location.href = "present.html?code=" + encodeURIComponent(s.code);
+        });
+        const delBtn = document.createElement("button");
+        delBtn.className = "tool-btn";
+        delBtn.textContent = "제거";
+        delBtn.title = "목록에서만 제거됩니다 (데이터는 유지)";
+        delBtn.addEventListener("click", () => {
+          if (confirm(`"${s.name || s.code}" 을(를) 목록에서 제거할까요?\n(세션 데이터는 유지되며, 코드로 다시 열 수 있습니다)`)) {
+            removeMySession(s.code);
+          }
+        });
+        actions.appendChild(openBtn);
+        actions.appendChild(delBtn);
+
+        item.appendChild(info);
+        item.appendChild(badge);
+        item.appendChild(actions);
+        listEl.appendChild(item);
+      });
+    }
+
+    /* ── 세션 만들기 ── */
+    function todayPrefix() {
+      const d = new Date();
+      return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}_`;
+    }
+
+    document.getElementById("createBtn").addEventListener("click", async () => {
+      if (!db) return;
+      const name = document.getElementById("sessionName").value.trim();
+      const question = document.getElementById("question").value.trim();
+      if (!name || name === todayPrefix()) {
+        createStatus.textContent = "세션 이름을 입력해 주세요. (예: 20260712_AI기초)";
+        createStatus.className = "status-msg error";
+        return;
+      }
+      if (!question) {
+        createStatus.textContent = "질문을 입력해 주세요.";
+        createStatus.className = "status-msg error";
+        return;
+      }
+      const maxPerUser = Number(document.getElementById("maxPerUser").value);
+      const mode = document.getElementById("inputMode").value === "phrase" ? "phrase" : "word";
+
+      let code = "";
+      for (let i = 0; i < 5; i++) {
+        const candidate = generateSessionCode();
+        const exists = (await sessionRef(db, candidate).child("meta").get()).exists();
+        if (!exists) { code = candidate; break; }
+      }
+      if (!code) {
+        createStatus.textContent = "코드 생성에 실패했습니다. 다시 시도해 주세요.";
+        createStatus.className = "status-msg error";
+        return;
+      }
+
+      const created = Date.now();
+      await sessionRef(db, code).child("meta").set({
+        q: question,
+        max: maxPerUser,
+        mode,
+        name,
+        created: firebase.database.ServerValue.TIMESTAMP
+      });
+      saveMySession({ code, name, q: question, mode, max: maxPerUser, created });
+      location.href = "present.html?code=" + encodeURIComponent(code);
+    });
+
+    /* ── 코드로 열기 (목록에도 추가) ── */
+    document.getElementById("reopenBtn").addEventListener("click", async () => {
+      if (!db) return;
+      const code = document.getElementById("reopenCode").value.trim().toUpperCase();
+      if (code.length !== 4) {
+        reopenStatus.textContent = "4자리 코드를 입력해 주세요.";
+        reopenStatus.className = "status-msg error";
+        return;
+      }
+      const snap = await sessionRef(db, code).child("meta").get();
+      if (!snap.exists()) {
+        reopenStatus.textContent = "해당 코드의 세션이 없습니다.";
+        reopenStatus.className = "status-msg error";
+        return;
+      }
+      const meta = snap.val();
+      saveMySession({
+        code,
+        name: meta.name || "(이름 없음)",
+        q: meta.q,
+        mode: meta.mode || "word",
+        max: meta.max,
+        created: meta.created || Date.now()
+      });
+      location.href = "present.html?code=" + encodeURIComponent(code);
+    });
+
+    /* ── 초기화 ── */
+    document.getElementById("sessionName").value = todayPrefix();
+    renderSessionList();
+  </script>
+</body>
+</html>

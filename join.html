@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>단어 제출 - 실시간 워드클라우드</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <div class="page-title">
+    <h1>☁️ 워드클라우드 참여</h1>
+  </div>
+
+  <main>
+    <div class="container">
+      <div class="card">
+        <p id="question" class="join-question">질문을 불러오는 중...</p>
+        <p id="remain" class="join-remain"></p>
+
+        <div id="inputArea">
+          <div class="field">
+            <input id="wordInput" class="input" maxlength="12" placeholder="단어 하나만 입력 (최대 12자)" autocomplete="off" />
+          </div>
+          <button id="submitBtn" class="btn btn-primary btn-block">제출하기</button>
+          <p id="status" class="status-msg"></p>
+        </div>
+
+        <div id="doneArea" class="join-done hidden">
+          <p class="big">🎉</p>
+          <p><strong>제출 완료!</strong><br />이제 앞의 화면을 봐주세요.</p>
+        </div>
+
+        <div id="myWords" class="submitted-words"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer__line">
+      &copy; 2026 EUNACLASS
+      <span class="footer__sep">&middot;</span>
+      AI Learning Tools for Education
+    </p>
+  </footer>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="./js/firebase-config.js"></script>
+  <script src="./js/common.js"></script>
+  <script src="./js/korean.js"></script>
+  <script>
+    const db = initFirebase();
+    const code = getCodeFromUrl();
+    const clientId = getClientId();
+
+    const questionEl = document.getElementById("question");
+    const remainEl = document.getElementById("remain");
+    const inputArea = document.getElementById("inputArea");
+    const doneArea = document.getElementById("doneArea");
+    const wordInput = document.getElementById("wordInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const statusEl = document.getElementById("status");
+    const myWordsEl = document.getElementById("myWords");
+
+    let maxPerUser = 3;
+    let inputMode = "word"; // "word" | "phrase"
+    const storageKey = "wc_submitted_" + code;
+    let myWords = JSON.parse(localStorage.getItem(storageKey) || "[]");
+
+    function setStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = "status-msg " + (type || "");
+    }
+
+    function renderMyState() {
+      const left = maxPerUser - myWords.length;
+      remainEl.textContent = myWords.length
+        ? `제출 ${myWords.length}/${maxPerUser}개`
+        : `${maxPerUser}개까지 제출할 수 있어요`;
+      myWordsEl.innerHTML = myWords.map((w) => `<span class="chip">${escapeHtml(w)}</span>`).join("");
+      if (left <= 0) {
+        inputArea.classList.add("hidden");
+        doneArea.classList.remove("hidden");
+      }
+    }
+
+    async function init() {
+      if (!db) return;
+      if (!code) {
+        questionEl.textContent = "잘못된 접속입니다. QR코드나 링크로 다시 접속해 주세요.";
+        inputArea.classList.add("hidden");
+        return;
+      }
+      const snap = await sessionRef(db, code).child("meta").get();
+      if (!snap.exists()) {
+        questionEl.textContent = "세션을 찾을 수 없습니다. 코드를 확인해 주세요.";
+        inputArea.classList.add("hidden");
+        return;
+      }
+      const meta = snap.val();
+      questionEl.textContent = meta.q;
+      maxPerUser = Number(meta.max) || 3;
+      inputMode = meta.mode === "phrase" ? "phrase" : "word";
+      if (inputMode === "phrase") {
+        wordInput.maxLength = 30;
+        wordInput.placeholder = "짧은 문구를 입력하세요 (최대 30자)";
+      }
+      renderMyState();
+      wordInput.focus();
+    }
+
+    async function submitWord() {
+      if (myWords.length >= maxPerUser) return;
+
+      const result = inputMode === "phrase" ? validatePhrase(wordInput.value) : validateWord(wordInput.value);
+      if (!result.ok) { setStatus(result.reason, "error"); return; }
+      if (myWords.includes(result.word)) {
+        setStatus("이미 제출한 단어예요. 다른 단어를 적어주세요.", "error");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      try {
+        await sessionRef(db, code).child("entries").push({
+          w: result.word,
+          c: clientId,
+          t: firebase.database.ServerValue.TIMESTAMP
+        });
+        myWords.push(result.word);
+        localStorage.setItem(storageKey, JSON.stringify(myWords));
+        wordInput.value = "";
+        setStatus(`"${result.word}" 제출 완료!`, "success");
+        renderMyState();
+      } catch (error) {
+        setStatus("제출에 실패했어요. 잠시 후 다시 시도해 주세요.", "error");
+      } finally {
+        submitBtn.disabled = false;
+        wordInput.focus();
+      }
+    }
+
+    submitBtn.addEventListener("click", submitWord);
+    wordInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submitWord(); });
+
+    init();
+  </script>
+</body>
+</html>
