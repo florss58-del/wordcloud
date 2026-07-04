@@ -180,12 +180,21 @@
     });
 
     const themeBtn = document.getElementById("themeBtn");
+
+    function applyTheme(dark) {
+      state.dark = dark;
+      document.body.classList.toggle("dark", dark);
+      themeBtn.textContent = dark ? "☀️ 밝게" : "🌙 어둡게";
+    }
+
     themeBtn.addEventListener("click", () => {
-      state.dark = !state.dark;
-      document.body.classList.toggle("dark", state.dark);
-      themeBtn.textContent = state.dark ? "☀️ 밝게" : "🌙 어둡게";
+      applyTheme(!state.dark);
+      localStorage.setItem("wc_theme", state.dark ? "dark" : "light");
       renderCloud();
     });
+
+    // 마지막에 선택한 테마 복원
+    if (localStorage.getItem("wc_theme") === "dark") applyTheme(true);
 
     /* ── QR 크게 보기 ── */
     const qrFocus = document.getElementById("qrFocus");
@@ -218,10 +227,43 @@
       qrToggleBtn.textContent = hidden ? "QR 보이기" : "QR 숨기기";
     });
 
+    // 질문·날짜가 함께 담긴 PNG로 저장
     document.getElementById("saveBtn").addEventListener("click", () => {
+      const pad = 28;
+      const headerHeight = 96;
+      const out = document.createElement("canvas");
+      out.width = canvas.width;
+      out.height = canvas.height + headerHeight;
+      const ctx = out.getContext("2d");
+
+      ctx.fillStyle = state.dark ? "#101423" : "#ffffff";
+      ctx.fillRect(0, 0, out.width, out.height);
+
+      // 질문 (폭에 맞게 글자 크기 자동 축소)
+      const question = questionEl.textContent;
+      const fontStack = '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif';
+      let fontSize = 30;
+      ctx.textBaseline = "top";
+      do {
+        ctx.font = `700 ${fontSize}px ${fontStack}`;
+        if (ctx.measureText(question).width <= out.width - pad * 2) break;
+        fontSize -= 2;
+      } while (fontSize > 14);
+      ctx.fillStyle = state.dark ? "#f1f3fa" : "#1e2433";
+      ctx.fillText(question, pad, pad);
+
+      // 날짜 · 코드 · 통계
+      const d = new Date();
+      const dateStr = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+      ctx.font = `400 15px ${fontStack}`;
+      ctx.fillStyle = state.dark ? "#8a93b8" : "#6b7280";
+      ctx.fillText(`${dateStr} · 코드 ${code} · 참여 ${state.clients.size}명 · 단어 ${state.totalEntries}개 · EUNACLASS`, pad, pad + fontSize + 12);
+
+      ctx.drawImage(canvas, 0, headerHeight);
+
       const link = document.createElement("a");
-      link.download = `wordcloud_${code}_${new Date().toISOString().slice(0, 10)}.png`;
-      link.href = canvas.toDataURL("image/png");
+      link.download = `wordcloud_${code}_${d.toISOString().slice(0, 10)}.png`;
+      link.href = out.toDataURL("image/png");
       link.click();
     });
 
