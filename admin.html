@@ -5,22 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>세션 만들기 (강사용) - 실시간 워드클라우드</title>
   <meta name="robots" content="noindex" />
-  <link rel="stylesheet" href="./css/style.css" />
+  <link rel="stylesheet" href="./css/style.css?v=4" />
   <style>
     .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
     .session-item {
       display: flex; align-items: center; gap: 0.8rem;
-      border: 1px solid var(--border); border-radius: 10px; padding: 0.7rem 0.9rem;
+      border: 1px solid var(--border); border-radius: 14px; padding: 0.75rem 0.95rem;
     }
     .session-info { flex: 1; min-width: 0; }
-    .session-name { font-weight: 700; font-size: 0.95rem; }
+    .session-name { font-weight: 600; font-size: 0.95rem; }
     .session-q {
       font-size: 0.82rem; color: var(--muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .session-code-badge {
-      font-weight: 800; letter-spacing: 0.15em; color: var(--accent);
-      background: #eef1fd; border-radius: 8px; padding: 0.3rem 0.6rem; font-size: 0.9rem;
+      font-weight: 600; letter-spacing: 0.15em; color: var(--accent);
+      background: var(--accent-soft); border-radius: 10px; padding: 0.32rem 0.65rem; font-size: 0.9rem;
     }
     .session-actions { display: flex; gap: 0.4rem; }
     .session-actions .tool-btn { white-space: nowrap; }
@@ -33,7 +33,7 @@
 </head>
 <body>
   <div class="page-title">
-    <h1>🎤 세션 만들기</h1>
+    <h1><svg class="icon title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></svg> 세션 만들기</h1>
     <p>세션 이름과 질문을 입력하면 참여 코드와 QR이 자동으로 생성됩니다.</p>
   </div>
 
@@ -41,7 +41,7 @@
     <div class="container">
       <div class="card">
         <div class="field">
-          <label for="sessionName">세션 이름 (관리용 — 날짜_수업명)</label>
+          <label for="sessionName">세션 이름 (관리용 · 날짜_수업명)</label>
           <input id="sessionName" class="input" maxlength="40" placeholder="20260712_AI기초" />
         </div>
         <div class="field">
@@ -71,15 +71,15 @@
       </div>
 
       <div class="card">
-        <h2>📂 내 세션 목록</h2>
+        <h2><svg class="icon title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg> 내 세션 목록</h2>
         <div id="sessionList" class="session-list"></div>
         <p class="form-hint" style="margin-top:0.8rem">
-          목록은 이 브라우저에 저장됩니다. 다른 컴퓨터에서는 아래 "코드로 열기"를 사용하면 목록에 다시 추가됩니다.
+          목록은 이 브라우저에 저장됩니다. 다른 컴퓨터에서는 아래 “코드로 열기”를 사용하면 목록에 다시 추가됩니다.
         </p>
       </div>
 
       <div class="card">
-        <h2>🔑 코드로 열기</h2>
+        <h2><svg class="icon title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg> 코드로 열기</h2>
         <div class="field">
           <input id="reopenCode" class="input code-input" maxlength="4" placeholder="ABCD" autocomplete="off" />
         </div>
@@ -173,7 +173,7 @@
         delBtn.textContent = "제거";
         delBtn.title = "목록에서만 제거됩니다 (데이터는 유지)";
         delBtn.addEventListener("click", () => {
-          if (confirm(`"${s.name || s.code}" 을(를) 목록에서 제거할까요?\n(세션 데이터는 유지되며, 코드로 다시 열 수 있습니다)`)) {
+          if (confirm(`“${s.name || s.code}” 을(를) 목록에서 제거할까요?\n(세션 데이터는 유지되며, 코드로 다시 열 수 있습니다)`)) {
             removeMySession(s.code);
           }
         });

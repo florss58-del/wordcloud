@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>단어 제출 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css" />
+  <link rel="stylesheet" href="./css/style.css?v=4" />
 </head>
 <body>
   <div class="page-title">
-    <h1>☁️ 워드클라우드 참여</h1>
+    <h1><svg class="icon title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg> 워드클라우드 참여</h1>
   </div>
 
   <main>
@@ -26,7 +26,7 @@
         </div>
 
         <div id="doneArea" class="join-done hidden">
-          <p class="big">🎉</p>
+          <p class="big"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="#0066cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></p>
           <p><strong>제출 완료!</strong><br />이제 앞의 화면을 봐주세요.</p>
         </div>
 
@@ -129,7 +129,7 @@
         myWords.push(result.word);
         localStorage.setItem(storageKey, JSON.stringify(myWords));
         wordInput.value = "";
-        setStatus(`"${result.word}" 제출 완료!`, "success");
+        setStatus(`“${result.word}” 제출 완료!`, "success");
         renderMyState();
       } catch (error) {
         setStatus("제출에 실패했어요. 잠시 후 다시 시도해 주세요.", "error");

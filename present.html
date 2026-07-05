@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>발표 화면 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css" />
+  <link rel="stylesheet" href="./css/style.css?v=4" />
 </head>
 <body class="present-page">
   <div class="present-wrap">
@@ -22,16 +22,16 @@
       <div id="qrBox"></div>
       <div class="join-code" id="joinCode">----</div>
       <div class="join-hint">QR 스캔 또는 홈에서<br />코드 입력으로 참여</div>
-      <div class="join-hint" style="color:var(--accent)">👆 클릭하면 크게</div>
+      <div class="join-hint" style="color:var(--accent)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg> 클릭하면 크게</div>
     </aside>
 
     <div class="present-toolbar">
-      <button id="qrBigBtn" class="tool-btn">📱 QR 크게</button>
-      <button id="pauseBtn" class="tool-btn">⏸ 일시정지</button>
-      <button id="themeBtn" class="tool-btn">🌙 어둡게</button>
-      <button id="qrToggleBtn" class="tool-btn">QR 숨기기</button>
-      <button id="saveBtn" class="tool-btn">💾 PNG 저장</button>
-      <button id="resetBtn" class="tool-btn">🗑 초기화</button>
+      <button id="qrBigBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg> QR 크게</button>
+      <button id="pauseBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg> 일시정지</button>
+      <button id="themeBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg> 어둡게</button>
+      <button id="qrToggleBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg> QR 숨기기</button>
+      <button id="saveBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> PNG 저장</button>
+      <button id="resetBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> 초기화</button>
       <div class="toolbar-spacer"></div>
       <span class="latest-word" id="latestWord"></span>
     </div>
@@ -51,7 +51,7 @@
     <div class="focus-word" id="focusWord"></div>
     <div class="focus-count" id="focusCount"></div>
     <div class="focus-actions">
-      <button id="hideWordBtn" class="btn btn-ghost" style="color:#fff;border-color:#fff">🚫 이 단어 숨기기</button>
+      <button id="hideWordBtn" class="btn btn-ghost" style="background:transparent;color:#fff;border-color:rgba(255,255,255,0.7)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg> 이 단어 숨기기</button>
       <button id="closeFocusBtn" class="btn btn-primary">닫기</button>
     </div>
   </div>
@@ -72,9 +72,20 @@
     const entryCountEl = document.getElementById("entryCount");
     const latestWordEl = document.getElementById("latestWord");
 
-    // 밝은/어두운 테마별 단어 색상 팔레트
-    const PALETTE_LIGHT = ["#4f6ef7", "#e5484d", "#1a9e55", "#e8871e", "#8e4ff7", "#0ea5b7", "#d6409f"];
-    const PALETTE_DARK = ["#8da2ff", "#ff8f92", "#5ee69a", "#ffc46b", "#c9a5ff", "#6be5f5", "#ff9ed8"];
+    // 툴바 라인 아이콘 (토글 버튼용)
+    const svgIcon = (paths) => `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+    const ICONS = {
+      pause: svgIcon('<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>'),
+      play: svgIcon('<polygon points="6 3 20 12 6 21 6 3"/>'),
+      moon: svgIcon('<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>'),
+      sun: svgIcon('<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.3 17.7-1.4 1.4"/><path d="m19.1 4.9-1.4 1.4"/>'),
+      eye: svgIcon('<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'),
+      eyeOff: svgIcon('<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>')
+    };
+
+    // 밝은/어두운 테마별 단어 색상 팔레트 (Apple: 잉크·그레이 + Action Blue)
+    const PALETTE_LIGHT = ["#1d1d1f", "#0066cc", "#515154", "#6e6e73", "#86868b", "#0071e3", "#424245"];
+    const PALETTE_DARK = ["#f5f5f7", "#2997ff", "#d2d2d7", "#a1a1a6", "#86868b", "#5ac8fa", "#e8e8ed"];
 
     const state = {
       counts: new Map(),     // word -> count
@@ -115,10 +126,10 @@
       if (list.length === 0) {
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = state.dark ? "#4a5378" : "#b8bfd4";
+        ctx.fillStyle = state.dark ? "#6e6e73" : "#c7c7cc";
         ctx.font = "600 28px sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("단어가 도착하면 여기에 나타납니다 ☁️", canvas.width / 2, canvas.height / 2);
+        ctx.fillText("단어가 도착하면 여기에 나타납니다", canvas.width / 2, canvas.height / 2);
         return;
       }
 
@@ -136,7 +147,7 @@
         fontFamily: '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif',
         fontWeight: 700,
         color: () => palette[Math.floor(Math.random() * palette.length)],
-        backgroundColor: state.dark ? "#101423" : "#ffffff",
+        backgroundColor: state.dark ? "#1d1d1f" : "#ffffff",
         rotateRatio: 0.15,
         rotationSteps: 2,
         shuffle: false,
@@ -174,7 +185,7 @@
     const pauseBtn = document.getElementById("pauseBtn");
     pauseBtn.addEventListener("click", () => {
       state.paused = !state.paused;
-      pauseBtn.textContent = state.paused ? "▶ 재개" : "⏸ 일시정지";
+      pauseBtn.innerHTML = state.paused ? ICONS.play + " 재개" : ICONS.pause + " 일시정지";
       pauseBtn.classList.toggle("active", state.paused);
       if (!state.paused && state.dirty) scheduleRender();
     });
@@ -184,7 +195,7 @@
     function applyTheme(dark) {
       state.dark = dark;
       document.body.classList.toggle("dark", dark);
-      themeBtn.textContent = dark ? "☀️ 밝게" : "🌙 어둡게";
+      themeBtn.innerHTML = dark ? ICONS.sun + " 밝게" : ICONS.moon + " 어둡게";
     }
 
     themeBtn.addEventListener("click", () => {
@@ -193,7 +204,7 @@
       renderCloud();
     });
 
-    // 마지막에 선택한 테마 복원
+    // 마지막에 선택한 테마 복원 (기본 밝게)
     if (localStorage.getItem("wc_theme") === "dark") applyTheme(true);
 
     /* ── QR 크게 보기 ── */
@@ -224,7 +235,7 @@
     qrToggleBtn.addEventListener("click", () => {
       const panel = document.getElementById("sidePanel");
       const hidden = panel.classList.toggle("hidden");
-      qrToggleBtn.textContent = hidden ? "QR 보이기" : "QR 숨기기";
+      qrToggleBtn.innerHTML = hidden ? ICONS.eye + " QR 보이기" : ICONS.eyeOff + " QR 숨기기";
     });
 
     // 질문·날짜가 함께 담긴 PNG로 저장
@@ -236,7 +247,7 @@
       out.height = canvas.height + headerHeight;
       const ctx = out.getContext("2d");
 
-      ctx.fillStyle = state.dark ? "#101423" : "#ffffff";
+      ctx.fillStyle = state.dark ? "#1d1d1f" : "#ffffff";
       ctx.fillRect(0, 0, out.width, out.height);
 
       // 질문 (폭에 맞게 글자 크기 자동 축소)
@@ -249,14 +260,14 @@
         if (ctx.measureText(question).width <= out.width - pad * 2) break;
         fontSize -= 2;
       } while (fontSize > 14);
-      ctx.fillStyle = state.dark ? "#f1f3fa" : "#1e2433";
+      ctx.fillStyle = state.dark ? "#f5f5f7" : "#1d1d1f";
       ctx.fillText(question, pad, pad);
 
       // 날짜 · 코드 · 통계
       const d = new Date();
       const dateStr = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
       ctx.font = `400 15px ${fontStack}`;
-      ctx.fillStyle = state.dark ? "#8a93b8" : "#6b7280";
+      ctx.fillStyle = state.dark ? "#a1a1a6" : "#86868b";
       ctx.fillText(`${dateStr} · 코드 ${code} · 참여 ${state.clients.size}명 · 단어 ${state.totalEntries}개 · EUNACLASS`, pad, pad + fontSize + 12);
 
       ctx.drawImage(canvas, 0, headerHeight);
