@@ -3,7 +3,8 @@
 수업용 실시간 참여형 워드클라우드. 정적 HTML/JS + Firebase Realtime Database.
 
 - **배포(프로덕션)**: https://wordcloud-mu.vercel.app (Vercel scope: `florss58-dels-projects`, 프로젝트명 `wordcloud`)
-  - 재배포: `npx vercel deploy --prod --yes --scope florss58-dels-projects`
+  - **GitHub 연동 자동 배포**: `git push origin main` → Vercel 자동 배포 (저장소 `github.com/florss58-del/wordcloud`)
+  - CLI 대체: `vercel deploy --prod --yes --scope florss58-dels-projects` (이 PC는 컴퓨터명이 한글이라 `vercel login` 오류 → VERCEL_TOKEN 방식 필요)
 - **Firebase**: 프로젝트 `euna-wordcloud`, RTDB `asia-southeast1`, 설정은 `js/firebase-config.js`
 - **화면**: `index.html`(교육생 코드 입력) / `admin.html`(강사: 세션 생성·내 세션 목록) / `present.html`(발표) / `join.html`(단어 제출)
 - **세션 이름 규칙**: `YYYYMMDD_수업명` (admin에서 날짜 자동 채움)
