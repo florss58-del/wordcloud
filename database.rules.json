@@ -1,0 +1,42 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "sessions": {
+      "$code": {
+        ".read": true,
+
+        "meta": {
+          ".write": "auth != null && !data.exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['q', 'max', 'mode', 'name', 'created'])",
+          "q": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
+          "max": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5" },
+          "mode": { ".validate": "newData.val() === 'word' || newData.val() === 'phrase'" },
+          "name": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "created": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
+        },
+
+        "entries": {
+          ".write": "auth != null && !newData.exists()",
+          "$entryId": {
+            ".write": "!data.exists() && newData.exists() && root.child('sessions').child($code).child('meta').exists()",
+            ".validate": "newData.hasChildren(['w', 'c', 't'])",
+            "w": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40" },
+            "c": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64" },
+            "t": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "hidden": {
+          ".write": "auth != null",
+          "$word": { ".validate": "newData.val() === true" }
+        },
+
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

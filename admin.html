@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>세션 만들기 (강사용) - 실시간 워드클라우드</title>
   <meta name="robots" content="noindex" />
-  <link rel="stylesheet" href="./css/style.css?v=4" />
+  <link rel="stylesheet" href="./css/style.css?v=5" />
   <style>
     .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
     .session-item {
@@ -96,13 +96,17 @@
       AI Learning Tools for Education
       <span class="footer__sep">&middot;</span>
       <a href="./index.html">참여자 홈으로</a>
+      <span class="footer__sep">&middot;</span>
+      <a href="#" id="logoutLink">로그아웃</a>
     </p>
   </footer>
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="./js/firebase-config.js"></script>
   <script src="./js/common.js"></script>
+  <script src="./js/auth.js"></script>
   <script>
     const db = initFirebase();
     const createStatus = document.getElementById("createStatus");
@@ -261,9 +265,17 @@
       location.href = "present.html?code=" + encodeURIComponent(code);
     });
 
-    /* ── 초기화 ── */
-    document.getElementById("sessionName").value = todayPrefix();
-    renderSessionList();
+    /* ── 로그아웃 ── */
+    document.getElementById("logoutLink").addEventListener("click", (e) => {
+      e.preventDefault();
+      signOutInstructor();
+    });
+
+    /* ── 초기화 (강사 로그인 후 진입) ── */
+    requireInstructor(() => {
+      document.getElementById("sessionName").value = todayPrefix();
+      renderSessionList();
+    });
   </script>
 </body>
 </html>

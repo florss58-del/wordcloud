@@ -236,6 +236,17 @@ body.present-page.dark { background: #1d1d1f; }
 .config-notice-box h2 { margin-bottom: 0.8rem; }
 .config-notice-box code { background: var(--accent-soft); color: var(--accent); padding: 0.15rem 0.45rem; border-radius: 6px; }
 
+/* ── 강사 로그인 게이트 ── */
+.auth-gate {
+  position: fixed; inset: 0; z-index: 90;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); padding: 1.25rem;
+}
+.auth-card { width: 100%; max-width: 400px; }
+.auth-hint { color: var(--muted); font-size: 0.9rem; margin: -0.7rem 0 1.3rem; }
+.auth-home { margin-top: 1rem; text-align: center; font-size: 0.85rem; }
+.auth-home a { color: var(--muted); }
+
 /* ── 푸터 (EUNACLASS 공통) ── */
 .footer {
   text-align: center; padding: 2rem 1rem;

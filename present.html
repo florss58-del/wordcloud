@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>발표 화면 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=4" />
+  <link rel="stylesheet" href="./css/style.css?v=5" />
 </head>
 <body class="present-page">
   <div class="present-wrap">
@@ -58,10 +58,12 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="./js/firebase-config.js"></script>
   <script src="./js/common.js"></script>
+  <script src="./js/auth.js"></script>
   <script>
     const db = initFirebase();
     const code = getCodeFromUrl();
@@ -331,7 +333,7 @@
     }
 
     window.addEventListener("resize", resizeCanvas);
-    init();
+    requireInstructor(init); // 강사 로그인 후 발표 화면 시작
   </script>
 </body>
 </html>
