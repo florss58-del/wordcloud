@@ -144,6 +144,7 @@ body.present-page.dark { background: #1d1d1f; }
 .present-wrap { position: fixed; inset: 0; display: flex; flex-direction: column; }
 
 .present-header {
+  flex: 0 0 auto;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.95rem 1.5rem; gap: 1rem;
   border-bottom: 1px solid var(--border);
@@ -156,7 +157,7 @@ body.present-page.dark { background: #1d1d1f; }
 .dark .present-stats { color: #a1a1a6; }
 .dark .present-stats strong { color: #2997ff; }
 
-#cloudCanvas { flex: 1; width: 100%; height: 100%; cursor: pointer; transition: opacity 0.35s ease; }
+#cloudCanvas { flex: 1 1 0; width: 100%; min-height: 0; cursor: pointer; transition: opacity 0.35s ease; }
 
 .present-side {
   position: fixed; right: 1.2rem; bottom: 4.6rem;
@@ -174,6 +175,7 @@ body.present-page.dark { background: #1d1d1f; }
 #qrBox { background: #fff; padding: 6px; border-radius: 8px; }
 
 .present-toolbar {
+  flex: 0 0 auto;
   display: flex; align-items: center; gap: 0.5rem;
   padding: 0.65rem 1.3rem;
   border-top: 1px solid var(--border);

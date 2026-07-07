@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>세션 만들기 (강사용) - 실시간 워드클라우드</title>
   <meta name="robots" content="noindex" />
-  <link rel="stylesheet" href="./css/style.css?v=6" />
+  <link rel="stylesheet" href="./css/style.css?v=7" />
   <style>
     .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
     .session-item {
@@ -24,6 +24,11 @@
     }
     .session-actions { display: flex; gap: 0.4rem; }
     .session-actions .tool-btn { white-space: nowrap; }
+    .session-item.editing { align-items: stretch; }
+    .session-edit { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; }
+    .session-edit .input { font-size: 0.9rem; }
+    .session-edit .session-actions { justify-content: flex-end; }
+    .session-edit .status-msg { margin: 0; }
     .empty-list { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 1rem 0; }
     @media (max-width: 640px) {
       .session-item { flex-wrap: wrap; }
@@ -131,6 +136,12 @@
       renderSessionList();
     }
 
+    // 목록 내 순서를 유지하며 항목 정보만 갱신
+    function updateMySession(code, patch) {
+      const sessions = loadMySessions().map((s) => (s.code === code ? { ...s, ...patch } : s));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    }
+
     function formatDate(timestamp) {
       if (!timestamp) return "";
       const d = new Date(timestamp);
@@ -172,6 +183,11 @@
         openBtn.addEventListener("click", () => {
           location.href = "present.html?code=" + encodeURIComponent(s.code);
         });
+        const editBtn = document.createElement("button");
+        editBtn.className = "tool-btn";
+        editBtn.textContent = "수정";
+        editBtn.title = "세션 이름·질문(주제)을 변경합니다";
+        editBtn.addEventListener("click", () => startEdit(item, s));
         const delBtn = document.createElement("button");
         delBtn.className = "tool-btn";
         delBtn.textContent = "제거";
@@ -182,6 +198,7 @@
           }
         });
         actions.appendChild(openBtn);
+        actions.appendChild(editBtn);
         actions.appendChild(delBtn);
 
         item.appendChild(info);
@@ -189,6 +206,78 @@
         item.appendChild(actions);
         listEl.appendChild(item);
       });
+    }
+
+    /* ── 세션 이름·질문 수정 (인라인) ── */
+    function startEdit(item, s) {
+      item.classList.add("editing");
+      item.innerHTML = "";
+
+      const form = document.createElement("div");
+      form.className = "session-edit";
+
+      const nameInput = document.createElement("input");
+      nameInput.className = "input";
+      nameInput.maxLength = 40;
+      nameInput.value = s.name || "";
+      nameInput.placeholder = "세션 이름 (날짜_수업명)";
+
+      const qInput = document.createElement("input");
+      qInput.className = "input";
+      qInput.maxLength = 80;
+      qInput.value = s.q || "";
+      qInput.placeholder = "질문 (교육생에게 보여질 주제)";
+
+      const editStatus = document.createElement("p");
+      editStatus.className = "status-msg";
+
+      const btnRow = document.createElement("div");
+      btnRow.className = "session-actions";
+      const saveBtn = document.createElement("button");
+      saveBtn.className = "tool-btn";
+      saveBtn.textContent = "저장";
+      const cancelBtn = document.createElement("button");
+      cancelBtn.className = "tool-btn";
+      cancelBtn.textContent = "취소";
+
+      cancelBtn.addEventListener("click", renderSessionList);
+      saveBtn.addEventListener("click", async () => {
+        const newName = nameInput.value.trim();
+        const newQ = qInput.value.trim();
+        if (!newName) {
+          editStatus.textContent = "세션 이름을 입력해 주세요.";
+          editStatus.className = "status-msg error";
+          return;
+        }
+        if (!newQ) {
+          editStatus.textContent = "질문을 입력해 주세요.";
+          editStatus.className = "status-msg error";
+          return;
+        }
+        saveBtn.disabled = true;
+        cancelBtn.disabled = true;
+        editStatus.textContent = "저장 중...";
+        editStatus.className = "status-msg";
+        try {
+          await sessionRef(db, s.code).child("meta").update({ name: newName, q: newQ });
+          updateMySession(s.code, { name: newName, q: newQ });
+          renderSessionList();
+        } catch (err) {
+          editStatus.textContent = "저장에 실패했습니다. 로그인 상태를 확인하고 다시 시도해 주세요.";
+          editStatus.className = "status-msg error";
+          saveBtn.disabled = false;
+          cancelBtn.disabled = false;
+        }
+      });
+
+      btnRow.appendChild(saveBtn);
+      btnRow.appendChild(cancelBtn);
+      form.appendChild(nameInput);
+      form.appendChild(qInput);
+      form.appendChild(editStatus);
+      form.appendChild(btnRow);
+      item.appendChild(form);
+      qInput.focus();
     }
 
     /* ── 세션 만들기 ── */

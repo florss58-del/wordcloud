@@ -10,10 +10,10 @@
         "meta": {
           ".write": "auth != null && !data.exists() && newData.exists()",
           ".validate": "newData.hasChildren(['q', 'max', 'mode', 'name', 'created'])",
-          "q": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
+          "q": { ".write": "auth != null", ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
           "max": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5" },
           "mode": { ".validate": "newData.val() === 'word' || newData.val() === 'phrase'" },
-          "name": { ".validate": "newData.isString() && newData.val().length <= 40" },
+          "name": { ".write": "auth != null", ".validate": "newData.isString() && newData.val().length <= 40" },
           "created": { ".validate": "newData.isNumber()" },
           "$other": { ".validate": false }
         },
