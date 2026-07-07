@@ -21,7 +21,7 @@
         "entries": {
           ".write": "auth != null && !newData.exists()",
           "$entryId": {
-            ".write": "!data.exists() && newData.exists() && root.child('sessions').child($code).child('meta').exists()",
+            ".write": "!data.exists() && newData.exists() && root.child('sessions').child($code).child('meta').exists() && root.child('sessions').child($code).child('closed').val() !== true",
             ".validate": "newData.hasChildren(['w', 'c', 't'])",
             "w": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40" },
             "c": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 64" },
@@ -33,6 +33,11 @@
         "hidden": {
           ".write": "auth != null",
           "$word": { ".validate": "newData.val() === true" }
+        },
+
+        "closed": {
+          ".write": "auth != null",
+          ".validate": "newData.isBoolean()"
         },
 
         "$other": { ".validate": false }

@@ -9,8 +9,8 @@
 - **화면**: `index.html`(교육생 코드 입력) / `admin.html`(강사: 세션 생성·내 세션 목록) / `present.html`(발표) / `join.html`(단어 제출)
 - **강사 인증**: Firebase Authentication(이메일/비밀번호). `admin.html`·`present.html`은 `js/auth.js`의 `requireInstructor()` 로그인 게이트 필요, `join.html`은 인증 없음(학생용)
 - **세션 이름 규칙**: `YYYYMMDD_수업명` (admin에서 날짜 자동 채움)
-- **데이터**: `sessions/{4자리코드}/{meta,entries,hidden}` — meta는 생성 후 수정·삭제 불가(규칙), 초기화는 entries/hidden만 삭제
-- **보안 규칙**: `database.rules.json`이 원본. 콘솔(Realtime Database → 규칙)에 붙여넣어 배포. meta 생성·hidden 쓰기·entries 초기화는 로그인 강사만, entries 제출(push)은 익명 허용
+- **데이터**: `sessions/{4자리코드}/{meta,entries,hidden,closed}` — meta는 생성 후 수정·삭제 불가(규칙), 초기화는 entries/hidden만 삭제, closed=true면 학생 제출 차단(발표 화면 "세션 종료" 토글)
+- **보안 규칙**: `database.rules.json`이 원본. 콘솔(Realtime Database → 규칙)에 붙여넣어 배포. meta 생성·hidden/closed 쓰기·entries 초기화는 로그인 강사만, entries 제출(push)은 익명 허용(단 세션 존재 + closed 아님)
 - **한국어 처리**: `js/korean.js` — 조사·어미 제거, 보호 단어, 금칙어(욕설)/장난 단어(메롱·바보 등) 필터
 - **로컬 테스트**: `npx serve . -l 3000` (serve.json의 `cleanUrls:false` 필수 — 켜면 `?code=` 쿼리 유실)
 

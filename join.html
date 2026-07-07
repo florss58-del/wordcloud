@@ -30,6 +30,11 @@
           <p><strong>제출 완료!</strong><br />이제 앞의 화면을 봐주세요.</p>
         </div>
 
+        <div id="closedArea" class="join-done hidden">
+          <p class="big"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></p>
+          <p><strong>세션이 종료되었습니다</strong><br />참여해 주셔서 감사합니다</p>
+        </div>
+
         <div id="myWords" class="submitted-words"></div>
       </div>
     </div>
@@ -57,6 +62,7 @@
     const remainEl = document.getElementById("remain");
     const inputArea = document.getElementById("inputArea");
     const doneArea = document.getElementById("doneArea");
+    const closedArea = document.getElementById("closedArea");
     const wordInput = document.getElementById("wordInput");
     const submitBtn = document.getElementById("submitBtn");
     const statusEl = document.getElementById("status");
@@ -64,6 +70,7 @@
 
     let maxPerUser = 3;
     let inputMode = "word"; // "word" | "phrase"
+    let sessionClosed = false;
     const storageKey = "wc_submitted_" + code;
     let myWords = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
@@ -78,9 +85,20 @@
         ? `제출 ${myWords.length}/${maxPerUser}개`
         : `${maxPerUser}개까지 제출할 수 있어요`;
       myWordsEl.innerHTML = myWords.map((w) => `<span class="chip">${escapeHtml(w)}</span>`).join("");
+
+      if (sessionClosed) {
+        inputArea.classList.add("hidden");
+        doneArea.classList.add("hidden");
+        closedArea.classList.remove("hidden");
+        return;
+      }
+      closedArea.classList.add("hidden");
       if (left <= 0) {
         inputArea.classList.add("hidden");
         doneArea.classList.remove("hidden");
+      } else {
+        inputArea.classList.remove("hidden");
+        doneArea.classList.add("hidden");
       }
     }
 
@@ -107,10 +125,16 @@
       }
       renderMyState();
       wordInput.focus();
+
+      // 강사가 세션을 종료하면 실시간으로 입력 차단
+      sessionRef(db, code).child("closed").on("value", (closedSnap) => {
+        sessionClosed = closedSnap.val() === true;
+        renderMyState();
+      });
     }
 
     async function submitWord() {
-      if (myWords.length >= maxPerUser) return;
+      if (sessionClosed || myWords.length >= maxPerUser) return;
 
       const result = inputMode === "phrase" ? validatePhrase(wordInput.value) : validateWord(wordInput.value);
       if (!result.ok) { setStatus(result.reason, "error"); return; }
