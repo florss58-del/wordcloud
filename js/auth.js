@@ -25,6 +25,7 @@ function requireInstructor(onReady) {
   auth.onAuthStateChanged((user) => {
     if (user) {
       if (overlay) { overlay.remove(); overlay = null; }
+      document.body.classList.remove("auth-pending");
       if (!started) { started = true; if (onReady) onReady(user); }
     } else if (!overlay) {
       overlay = buildAuthOverlay(auth);
