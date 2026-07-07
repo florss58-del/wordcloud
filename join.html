@@ -119,6 +119,12 @@
       questionEl.textContent = meta.q;
       maxPerUser = Number(meta.max) || 3;
       inputMode = meta.mode === "phrase" ? "phrase" : "word";
+
+      // 강사가 주제를 수정하면 학생 화면에도 즉시 반영
+      sessionRef(db, code).child("meta").child("q").on("value", (qSnap) => {
+        const q = qSnap.val();
+        if (typeof q === "string" && q.length) questionEl.textContent = q;
+      });
       if (inputMode === "phrase") {
         wordInput.maxLength = 30;
         wordInput.placeholder = "짧은 문구를 입력하세요 (최대 30자)";

@@ -228,6 +228,11 @@
       qInput.value = s.q || "";
       qInput.placeholder = "질문 (교육생에게 보여질 주제)";
 
+      const hint = document.createElement("p");
+      hint.className = "form-hint";
+      hint.style.margin = "0";
+      hint.textContent = "입력 형식·1인당 개수는 변경할 수 없습니다.";
+
       const editStatus = document.createElement("p");
       editStatus.className = "status-msg";
 
@@ -274,6 +279,7 @@
       btnRow.appendChild(cancelBtn);
       form.appendChild(nameInput);
       form.appendChild(qInput);
+      form.appendChild(hint);
       form.appendChild(editStatus);
       form.appendChild(btnRow);
       item.appendChild(form);

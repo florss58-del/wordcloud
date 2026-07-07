@@ -322,9 +322,16 @@
 
       const snap = await sessionRef(db, code).child("meta").get();
       if (!snap.exists()) { questionEl.textContent = "세션을 찾을 수 없습니다."; return; }
-      questionEl.textContent = snap.val().q;
-      document.title = snap.val().q + " - 실시간 워드클라우드";
       document.getElementById("joinCode").textContent = code;
+
+      // 강사가 admin에서 주제를 수정하면 발표 화면에 즉시 반영
+      sessionRef(db, code).child("meta").child("q").on("value", (qSnap) => {
+        const q = qSnap.val();
+        if (typeof q === "string" && q.length) {
+          questionEl.textContent = q;
+          document.title = q + " - 실시간 워드클라우드";
+        }
+      });
 
       canvas.addEventListener("wordcloudstop", () => { canvas.style.opacity = "1"; });
 
