@@ -17,6 +17,8 @@ const AUTH_ERROR_MESSAGES = {
 // 미로그인 시 로그인 오버레이를 띄우고, 로그인되면 onReady(user)를 1회 호출
 function requireInstructor(onReady) {
   const auth = firebase.auth();
+  // 로그인 유지는 탭이 열려 있는 동안만 (탭을 닫으면 로그아웃)
+  auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(() => {});
   let overlay = null;
   let started = false;
 
