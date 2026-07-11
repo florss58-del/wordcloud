@@ -176,7 +176,7 @@ body.present-page.dark { background: #1d1d1f; }
 
 .present-toolbar {
   flex: 0 0 auto;
-  display: flex; align-items: center; gap: 0.5rem;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;
   padding: 0.65rem 1.3rem;
   border-top: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.92);
@@ -184,17 +184,23 @@ body.present-page.dark { background: #1d1d1f; }
 .dark .present-toolbar { background: rgba(29, 29, 31, 0.92); border-color: #333336; }
 .tool-btn {
   display: inline-flex; align-items: center; gap: 0.35rem;
+  flex: 0 0 auto; white-space: nowrap;   /* 버튼 글자가 줄바꿈되지 않게 */
   padding: 0.5rem 0.95rem; font-size: 0.88rem; font-weight: 400;
   border: 1px solid var(--border); border-radius: var(--radius-pill);
   background: #fff; color: var(--text); cursor: pointer;
   transition: border-color 0.12s, color 0.12s, background 0.12s;
 }
+.tool-btn .icon { flex: 0 0 auto; }
 .tool-btn:hover { border-color: var(--accent); color: var(--accent); }
 .tool-btn.active { background: var(--accent); border-color: transparent; color: #fff; }
 .dark .tool-btn { background: rgba(60, 60, 63, 0.6); border-color: #48484a; color: #d2d2d7; }
 .dark .tool-btn:hover { border-color: #2997ff; color: #5ac8fa; }
-.toolbar-spacer { flex: 1; }
-.latest-word { font-size: 0.9rem; color: var(--muted); font-weight: 500; }
+.toolbar-spacer { flex: 1 1 auto; }
+.latest-word {
+  flex: 0 1 auto; min-width: 0;
+  max-width: 22ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 0.9rem; color: var(--muted); font-weight: 500;
+}
 .latest-word strong { color: var(--accent); }
 .dark .latest-word strong { color: #2997ff; }
 
