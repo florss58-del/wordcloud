@@ -81,6 +81,9 @@
         <p id="listHint" class="form-hint" style="margin-top:0.8rem">
           목록은 강사 계정에 저장됩니다. 다른 컴퓨터에서 로그인해도 같은 목록이 보입니다.
         </p>
+        <button id="findBtn" class="btn btn-ghost btn-block" style="margin-top:0.6rem">목록에 없는 지난 세션 찾기</button>
+        <p id="findStatus" class="status-msg"></p>
+        <div id="foundList" class="session-list" style="margin-top:0.6rem"></div>
       </div>
 
       <div class="card">
@@ -270,6 +273,89 @@
         listEl.appendChild(item);
       });
     }
+
+    /* ── 목록에 없는 지난 세션 찾기 (DB 전체에서 검색해 계정 목록에 복구) ── */
+    const findStatus = document.getElementById("findStatus");
+    const foundListEl = document.getElementById("foundList");
+
+    document.getElementById("findBtn").addEventListener("click", async () => {
+      if (!db) return;
+      foundListEl.innerHTML = "";
+      findStatus.textContent = "찾는 중...";
+      findStatus.className = "status-msg";
+
+      let snap;
+      try {
+        snap = await db.ref("sessions").get();
+      } catch (_) {
+        findStatus.textContent = "세션을 읽지 못했습니다. 로그인 상태와 보안 규칙을 확인해 주세요.";
+        findStatus.className = "status-msg error";
+        return;
+      }
+
+      const known = new Set(mySessions.map((s) => s.code));
+      const found = [];
+      snap.forEach((child) => {
+        const code = child.key;
+        if (known.has(code)) return;
+        const value = child.val() || {};
+        const meta = value.meta || {};
+        found.push({
+          code,
+          name: meta.name || "(이름 없음)",
+          q: meta.q || "",
+          mode: meta.mode || "word",
+          max: meta.max || 3,
+          created: meta.created || 0,
+          entryCount: value.entries ? Object.keys(value.entries).length : 0
+        });
+      });
+      found.sort((a, b) => (b.created || 0) - (a.created || 0));
+
+      if (found.length === 0) {
+        findStatus.textContent = "목록에 없는 세션이 없습니다.";
+        return;
+      }
+      findStatus.textContent = `목록에 없는 세션 ${found.length}개를 찾았습니다. 필요한 세션을 목록에 추가하세요.`;
+
+      found.forEach((s) => {
+        const item = document.createElement("div");
+        item.className = "session-item";
+
+        const info = document.createElement("div");
+        info.className = "session-info";
+        const name = document.createElement("div");
+        name.className = "session-name";
+        name.textContent = s.name;
+        const sub = document.createElement("div");
+        sub.className = "session-q";
+        sub.textContent = `${formatDate(s.created)} · 단어 ${s.entryCount}개 · ${s.q}`;
+        info.appendChild(name);
+        info.appendChild(sub);
+
+        const badge = document.createElement("span");
+        badge.className = "session-code-badge";
+        badge.textContent = s.code;
+
+        const actions = document.createElement("div");
+        actions.className = "session-actions";
+        const addBtn = document.createElement("button");
+        addBtn.className = "tool-btn";
+        addBtn.textContent = "목록에 추가";
+        addBtn.addEventListener("click", async () => {
+          addBtn.disabled = true;
+          await saveMySession({ code: s.code, name: s.name, q: s.q, mode: s.mode, max: s.max, created: s.created || Date.now() });
+          item.remove();
+          renderSessionList();
+        });
+        actions.appendChild(addBtn);
+
+        item.appendChild(info);
+        item.appendChild(badge);
+        item.appendChild(actions);
+        foundListEl.appendChild(item);
+      });
+    });
 
     /* ── 세션 이름·질문 수정 (인라인) ── */
     function startEdit(item, s) {

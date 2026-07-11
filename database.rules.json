@@ -25,6 +25,8 @@
     },
 
     "sessions": {
+      ".read": "auth != null",
+
       "$code": {
         ".read": true,
 
