@@ -24,6 +24,8 @@
     }
     .session-actions { display: flex; gap: 0.4rem; }
     .session-actions .tool-btn { white-space: nowrap; }
+    .tool-btn.danger { color: var(--danger); }
+    .tool-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
     .session-item.editing { align-items: stretch; }
     .session-edit { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; }
     .session-edit .input { font-size: 0.9rem; }
@@ -263,15 +265,46 @@
             removeMySession(s.code);
           }
         });
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "tool-btn danger";
+        deleteBtn.textContent = "삭제";
+        deleteBtn.title = "세션과 학생 단어를 완전히 삭제합니다";
+        deleteBtn.addEventListener("click", () => deleteSession(s, null));
         actions.appendChild(openBtn);
         actions.appendChild(editBtn);
         actions.appendChild(delBtn);
+        actions.appendChild(deleteBtn);
 
         item.appendChild(info);
         item.appendChild(badge);
         item.appendChild(actions);
         listEl.appendChild(item);
       });
+    }
+
+    /* ── 세션 완전 삭제 (DB에서 제거 · 되돌릴 수 없음) ── */
+    async function deleteSession(s, itemEl) {
+      let count = s.entryCount;
+      if (count === undefined) {
+        try {
+          const snap = await sessionRef(db, s.code).child("entries").get();
+          count = snap.exists() ? snap.numChildren() : 0;
+        } catch (_) { count = 0; }
+      }
+      const message = `“${s.name || s.code}” (${s.code}) 세션을 완전히 삭제할까요?\n` +
+        `학생이 제출한 단어 ${count}개가 함께 사라지며, 되돌릴 수 없습니다.`;
+      if (!confirm(message)) return;
+
+      try {
+        await sessionRef(db, s.code).remove();
+      } catch (_) {
+        alert("삭제에 실패했습니다. 로그인 상태와 보안 규칙을 확인해 주세요.");
+        return;
+      }
+      if (mySessions.some((m) => m.code === s.code)) {
+        await removeMySession(s.code);   // 계정 목록에서도 제거
+      }
+      if (itemEl) itemEl.remove();
     }
 
     /* ── 목록에 없는 지난 세션 찾기 (DB 전체에서 검색해 계정 목록에 복구) ── */
@@ -348,7 +381,13 @@
           item.remove();
           renderSessionList();
         });
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "tool-btn danger";
+        deleteBtn.textContent = "삭제";
+        deleteBtn.title = "세션과 학생 단어를 완전히 삭제합니다";
+        deleteBtn.addEventListener("click", () => deleteSession(s, item));
         actions.appendChild(addBtn);
+        actions.appendChild(deleteBtn);
 
         item.appendChild(info);
         item.appendChild(badge);

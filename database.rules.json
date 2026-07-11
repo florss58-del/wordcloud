@@ -29,6 +29,7 @@
 
       "$code": {
         ".read": true,
+        ".write": "auth != null && data.exists() && !newData.exists()",
 
         "meta": {
           ".write": "auth != null && !data.exists() && newData.exists()",
