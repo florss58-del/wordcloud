@@ -258,17 +258,17 @@
         editBtn.addEventListener("click", () => startEdit(item, s));
         const delBtn = document.createElement("button");
         delBtn.className = "tool-btn";
-        delBtn.textContent = "제거";
-        delBtn.title = "목록에서만 제거됩니다 (데이터는 유지)";
+        delBtn.textContent = "목록에서 숨기기";
+        delBtn.title = "내 목록에서만 숨깁니다 (세션과 단어는 그대로 유지)";
         delBtn.addEventListener("click", () => {
-          if (confirm(`“${s.name || s.code}” 을(를) 목록에서 제거할까요?\n(세션 데이터는 유지되며, 코드로 다시 열 수 있습니다)`)) {
+          if (confirm(`“${s.name || s.code}” 을(를) 내 목록에서 숨길까요?\n세션과 학생 단어는 그대로 남고, “목록에 없는 지난 세션 찾기”로 다시 불러올 수 있습니다.`)) {
             removeMySession(s.code);
           }
         });
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "tool-btn danger";
-        deleteBtn.textContent = "삭제";
-        deleteBtn.title = "세션과 학생 단어를 완전히 삭제합니다";
+        deleteBtn.textContent = "완전 삭제";
+        deleteBtn.title = "세션과 학생 단어를 DB에서 완전히 삭제합니다";
         deleteBtn.addEventListener("click", () => deleteSession(s, null));
         actions.appendChild(openBtn);
         actions.appendChild(editBtn);
@@ -311,7 +311,7 @@
     const findStatus = document.getElementById("findStatus");
     const foundListEl = document.getElementById("foundList");
 
-    document.getElementById("findBtn").addEventListener("click", async () => {
+    async function findMissingSessions() {
       if (!db) return;
       foundListEl.innerHTML = "";
       findStatus.textContent = "찾는 중...";
@@ -383,8 +383,8 @@
         });
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "tool-btn danger";
-        deleteBtn.textContent = "삭제";
-        deleteBtn.title = "세션과 학생 단어를 완전히 삭제합니다";
+        deleteBtn.textContent = "완전 삭제";
+        deleteBtn.title = "세션과 학생 단어를 DB에서 완전히 삭제합니다";
         deleteBtn.addEventListener("click", () => deleteSession(s, item));
         actions.appendChild(addBtn);
         actions.appendChild(deleteBtn);
@@ -394,7 +394,9 @@
         item.appendChild(actions);
         foundListEl.appendChild(item);
       });
-    });
+    }
+
+    document.getElementById("findBtn").addEventListener("click", findMissingSessions);
 
     /* ── 세션 이름·질문 수정 (인라인) ── */
     function startEdit(item, s) {
@@ -555,9 +557,15 @@
     });
 
     /* ── 초기화 (강사 로그인 후 진입) ── */
-    requireInstructor((user) => {
+    requireInstructor(async (user) => {
       document.getElementById("sessionName").value = todayPrefix();
-      initSessionList(user);
+      await initSessionList(user);
+      // 발표 화면에서 세션을 종료하고 넘어온 경우 지난 세션 목록을 바로 펼쳐 준다
+      if (new URLSearchParams(location.search).get("find") === "1") {
+        await findMissingSessions();
+        const findBtn = document.getElementById("findBtn");
+        if (findBtn.scrollIntoView) findBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     });
   </script>
 </body>

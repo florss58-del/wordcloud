@@ -398,12 +398,13 @@
     let sessionClosed = false;
 
     closeSessionBtn.addEventListener("click", async () => {
-      if (!sessionClosed && !confirm("세션을 종료할까요? 학생들의 단어 제출이 차단됩니다.\n(“세션 재개”로 다시 열 수 있습니다)")) return;
       if (sessionClosed) {
         await sessionRef(db, code).child("closed").remove();
-      } else {
-        await sessionRef(db, code).child("closed").set(true);
+        return;
       }
+      if (!confirm("세션을 종료할까요? 학생들의 단어 제출이 차단됩니다.\n종료 후 관리 화면으로 이동합니다. (“세션 재개”로 다시 열 수 있습니다)")) return;
+      await sessionRef(db, code).child("closed").set(true);
+      location.href = "admin.html?find=1";   // 관리 화면에서 지난 세션을 바로 확인·정리
     });
 
     document.getElementById("resetBtn").addEventListener("click", async () => {
