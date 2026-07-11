@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>발표 화면 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=7" />
+  <link rel="stylesheet" href="./css/style.css?v=8" />
 </head>
 <body class="present-page auth-pending">
   <div class="present-wrap">
@@ -31,6 +31,7 @@
       <button id="pauseBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg> 일시정지</button>
       <button id="themeBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg> 어둡게</button>
       <button id="qrToggleBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg> QR 숨기기</button>
+      <button id="resultsBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg> 결과 보기</button>
       <button id="saveBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> PNG 저장</button>
       <button id="resetBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> 초기화</button>
       <button id="closeSessionBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> 세션 종료</button>
@@ -46,6 +47,23 @@
     <div class="qr-focus-code" id="qrFocusCode">----</div>
     <p class="qr-focus-hint">휴대폰 카메라로 QR을 찍거나, 접속 후 위 코드를 입력하세요</p>
     <p class="qr-focus-close-hint">화면을 클릭하면 워드클라우드로 돌아갑니다</p>
+  </div>
+
+  <!-- 결과 보기 (빈도표 + CSV) -->
+  <div id="resultsOverlay" class="results-overlay hidden">
+    <div class="results-card">
+      <div class="results-head">
+        <p class="results-title" id="resultsTitle"></p>
+        <p class="results-sub" id="resultsSub"></p>
+      </div>
+      <div class="results-body" id="resultsBody"></div>
+      <div class="results-foot">
+        <label class="results-toggle"><input type="checkbox" id="includeHidden" /> 숨긴 단어 포함</label>
+        <div class="spacer"></div>
+        <button id="csvBtn" class="btn btn-ghost">CSV 내보내기</button>
+        <button id="closeResultsBtn" class="btn btn-primary">닫기</button>
+      </div>
+    </div>
   </div>
 
   <!-- 단어 클릭 시 강조 오버레이 -->
@@ -270,18 +288,104 @@
       ctx.fillText(question, pad, pad);
 
       // 날짜 · 코드 · 통계
-      const d = new Date();
-      const dateStr = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+      const today = todayStamp();
       ctx.font = `400 15px ${fontStack}`;
       ctx.fillStyle = state.dark ? "#a1a1a6" : "#86868b";
-      ctx.fillText(`${dateStr} · 코드 ${code} · 참여 ${state.clients.size}명 · 단어 ${state.totalEntries}개 · EUNACLASS`, pad, pad + fontSize + 12);
+      ctx.fillText(`${today.dot} · 코드 ${code} · 참여 ${state.clients.size}명 · 단어 ${state.totalEntries}개 · EUNACLASS`, pad, pad + fontSize + 12);
 
       ctx.drawImage(canvas, 0, headerHeight);
 
       const link = document.createElement("a");
-      link.download = `wordcloud_${code}_${d.toISOString().slice(0, 10)}.png`;
+      link.download = `wordcloud_${code}_${today.iso}.png`;
       link.href = out.toDataURL("image/png");
       link.click();
+    });
+
+    /* ── 결과 보기 (빈도표 + CSV 내보내기) ── */
+    const resultsOverlay = document.getElementById("resultsOverlay");
+    const resultsBody = document.getElementById("resultsBody");
+    const includeHiddenEl = document.getElementById("includeHidden");
+
+    function todayStamp() {
+      const d = new Date();
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      return { iso, dot: iso.replace(/-/g, ".") };
+    }
+
+    // 빈도 내림차순, 같으면 가나다순
+    function resultRows() {
+      return [...state.counts.entries()]
+        .filter(([word]) => includeHiddenEl.checked || !state.hidden.has(word))
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"));
+    }
+
+    function renderResults() {
+      const rows = resultRows();
+      document.getElementById("resultsTitle").textContent = questionEl.textContent;
+      document.getElementById("resultsSub").textContent =
+        `${todayStamp().dot} · 코드 ${code} · 참여 ${state.clients.size}명 · 제출 ${state.totalEntries}개 · 단어 종류 ${rows.length}개`;
+
+      if (rows.length === 0) {
+        resultsBody.innerHTML = '<p class="results-empty">아직 집계할 단어가 없습니다</p>';
+        return;
+      }
+
+      const total = rows.reduce((sum, [, count]) => sum + count, 0);
+      const max = rows[0][1];
+      const body = rows.map(([word, count], i) => `
+        <tr>
+          <td class="col-rank">${i + 1}</td>
+          <td><span class="results-word ${state.hidden.has(word) ? "is-hidden" : ""}">${escapeHtml(word)}</span></td>
+          <td class="col-bar"><div class="results-bar-track"><div class="results-bar" style="width:${(count / max * 100).toFixed(1)}%"></div></div></td>
+          <td class="col-count">${count}<span class="results-pct">${(count / total * 100).toFixed(1)}%</span></td>
+        </tr>`).join("");
+
+      resultsBody.innerHTML = `
+        <table class="results-table">
+          <thead><tr><th>순위</th><th>단어</th><th class="col-bar"></th><th class="col-count">횟수</th></tr></thead>
+          <tbody>${body}</tbody>
+        </table>`;
+    }
+
+    function openResults() {
+      renderResults();
+      resultsOverlay.classList.remove("hidden");
+    }
+
+    document.getElementById("resultsBtn").addEventListener("click", openResults);
+    document.getElementById("closeResultsBtn").addEventListener("click", () => resultsOverlay.classList.add("hidden"));
+    resultsOverlay.addEventListener("click", (e) => { if (e.target === resultsOverlay) resultsOverlay.classList.add("hidden"); });
+    includeHiddenEl.addEventListener("change", renderResults);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") resultsOverlay.classList.add("hidden");
+    });
+
+    // 엑셀에서 한글이 깨지지 않도록 BOM 포함 UTF-8
+    document.getElementById("csvBtn").addEventListener("click", () => {
+      const rows = resultRows();
+      if (rows.length === 0) { alert("내보낼 단어가 없습니다."); return; }
+
+      const total = rows.reduce((sum, [, count]) => sum + count, 0);
+      const cell = (value) => `"${String(value).replace(/"/g, '""')}"`;
+      const lines = [["순위", "단어", "횟수", "비율(%)", "표시"].map(cell).join(",")];
+      rows.forEach(([word, count], i) => {
+        lines.push([
+          i + 1,
+          word,
+          count,
+          (count / total * 100).toFixed(1),
+          state.hidden.has(word) ? "숨김" : "표시"
+        ].map(cell).join(","));
+      });
+
+      const today = todayStamp();
+      const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = `wordcloud_${code}_${today.iso}.csv`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
     });
 
     /* ── 관리 페이지로 복귀 ── */

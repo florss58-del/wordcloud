@@ -225,6 +225,53 @@ body.present-page.dark { background: #1d1d1f; }
 .word-focus .focus-actions { display: flex; gap: 0.8rem; margin-top: 0.8rem; }
 .hidden { display: none !important; }
 
+/* 결과 보기 패널 */
+.results-overlay {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(29, 29, 31, 0.45); padding: 1.5rem;
+}
+.results-card {
+  display: flex; flex-direction: column;
+  width: min(700px, 100%); max-height: 86vh; overflow: hidden;
+  background: var(--card); color: var(--text);
+  border-radius: var(--radius-lg); box-shadow: 0 18px 60px rgba(0, 0, 0, 0.22);
+}
+.dark .results-card { background: #1d1d1f; color: #f5f5f7; }
+.results-head { padding: 1.4rem 1.6rem 1rem; border-bottom: 1px solid var(--border); }
+.results-title { font-size: 1.3rem; font-weight: 600; letter-spacing: -0.02em; }
+.results-sub { margin-top: 0.35rem; font-size: 0.85rem; color: var(--muted); }
+.results-body { flex: 1; overflow-y: auto; padding: 0 1.6rem 1rem; }
+.results-empty { padding: 2.6rem 0; text-align: center; color: var(--muted); }
+.results-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+.results-table th {
+  position: sticky; top: 0; z-index: 1; background: var(--card);
+  text-align: left; font-size: 0.75rem; font-weight: 600; color: var(--muted);
+  padding: 0.75rem 0.5rem; border-bottom: 1px solid var(--border);
+}
+.dark .results-table th { background: #1d1d1f; }
+.results-table td { padding: 0.6rem 0.5rem; border-bottom: 1px solid var(--border); }
+.results-table .col-rank { width: 3rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.results-table .col-bar { width: 34%; }
+.results-table .col-count { width: 6.5rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.results-word.is-hidden { color: var(--muted); text-decoration: line-through; }
+.results-pct { margin-left: 0.35rem; font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+.results-bar-track { height: 8px; border-radius: var(--radius-pill); background: var(--border); }
+.results-bar { height: 100%; min-width: 4px; border-radius: var(--radius-pill); background: var(--accent); }
+.results-foot {
+  display: flex; align-items: center; gap: 0.8rem;
+  padding: 1rem 1.6rem; border-top: 1px solid var(--border);
+}
+.results-foot .spacer { flex: 1; }
+.results-toggle {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.88rem; color: var(--muted); cursor: pointer; user-select: none;
+}
+.dark .results-head, .dark .results-foot, .dark .results-table th { border-color: #333336; }
+.dark .results-table td { border-color: #2c2c2e; }
+.dark .results-bar-track { background: #3a3a3c; }
+.dark .results-bar { background: #2997ff; }
+
 /* ── Firebase 미설정 안내 ── */
 .config-notice {
   position: fixed; inset: 0; z-index: 100;
@@ -291,6 +338,13 @@ body.present-page.dark { background: #1d1d1f; }
   .latest-word { display: none; } /* 좁은 화면에서는 생략 */
   .present-side { right: 0.5rem; bottom: 4.6rem; transform: scale(0.72); transform-origin: bottom right; }
   .word-focus .focus-count { font-size: 1.05rem; }
+
+  .results-overlay { padding: 0.75rem; }
+  .results-card { max-height: 92vh; }
+  .results-head, .results-foot { padding-left: 1.1rem; padding-right: 1.1rem; }
+  .results-body { padding-left: 1.1rem; padding-right: 1.1rem; }
+  .results-table .col-bar { display: none; } /* 좁은 화면에서는 막대 생략 */
+  .results-foot .btn { padding: 0.75rem 1.1rem; }
 }
 
 /* 입력 필드 16px 미만이면 iOS가 자동 확대함 — 방지 */
