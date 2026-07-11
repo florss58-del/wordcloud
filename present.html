@@ -107,9 +107,9 @@
       unlock: svgIcon('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>')
     };
 
-    // 밝은/어두운 테마별 단어 색상 팔레트 (Apple: 잉크·그레이 + Action Blue)
-    const PALETTE_LIGHT = ["#1d1d1f", "#0066cc", "#515154", "#6e6e73", "#86868b", "#0071e3", "#424245"];
-    const PALETTE_DARK = ["#f5f5f7", "#2997ff", "#d2d2d7", "#a1a1a6", "#86868b", "#5ac8fa", "#e8e8ed"];
+    // 단어 색상 팔레트 — 흰 배경·어두운 배경 모두에서 대비가 충분한 진한 톤만 사용
+    const PALETTE_LIGHT = ["#1d1d1f", "#0066cc", "#c2185b", "#1a7f37", "#6d28d9", "#b45309", "#0e7490"];
+    const PALETTE_DARK = ["#f5f5f7", "#4da3ff", "#ff7aa8", "#4ade80", "#c4a2ff", "#fbbf24", "#5ad2e6"];
 
     const state = {
       counts: new Map(),     // word -> count
@@ -123,10 +123,13 @@
 
     let renderTimer = null;
 
+    // 고해상도 화면에서도 또렷하게 — 캔버스 픽셀을 배율만큼 늘려 그린다
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
     function resizeCanvas() {
       const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
       scheduleRender();
     }
 
@@ -136,11 +139,14 @@
       renderTimer = setTimeout(renderCloud, 400);
     }
 
+    // 상위 60개만 — 너무 많으면 글자가 작아져 뒤에서 안 보인다
+    const MAX_WORDS = 60;
+
     function visibleList() {
       return [...state.counts.entries()]
         .filter(([word]) => !state.hidden.has(word))
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 150);
+        .slice(0, MAX_WORDS);
     }
 
     function renderCloud() {
@@ -151,7 +157,7 @@
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = state.dark ? "#6e6e73" : "#c7c7cc";
-        ctx.font = "600 28px sans-serif";
+        ctx.font = `600 ${Math.round(28 * dpr)}px sans-serif`;
         ctx.textAlign = "center";
         ctx.fillText("단어가 도착하면 여기에 나타납니다", canvas.width / 2, canvas.height / 2);
         return;
@@ -160,20 +166,20 @@
       canvas.style.opacity = "0.45"; // 새 배치 렌더링 시 부드러운 전환
       const maxCount = list[0][1];
       const palette = state.dark ? PALETTE_DARK : PALETTE_LIGHT;
-      // 화면 크기와 최대 빈도에 맞춰 글자 크기 계산
+      // 화면 크기와 최대 빈도에 맞춰 글자 크기 계산 (단어가 적을수록 크게)
       const base = Math.min(canvas.width, canvas.height);
-      const factor = (base / 9) / Math.sqrt(maxCount);
+      const density = Math.max(0.75, Math.min(1.25, 14 / Math.sqrt(list.length)));
+      const factor = (base / 7) * density / Math.sqrt(maxCount);
 
       WordCloud(canvas, {
         list,
-        gridSize: Math.max(8, Math.round(base / 70)),
-        weightFactor: (count) => Math.max(14, Math.sqrt(count) * factor),
+        gridSize: Math.max(6, Math.round(base / 90)),
+        weightFactor: (count) => Math.max(22 * dpr, Math.sqrt(count) * factor),
         fontFamily: '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif',
         fontWeight: 700,
         color: () => palette[Math.floor(Math.random() * palette.length)],
         backgroundColor: state.dark ? "#1d1d1f" : "#ffffff",
-        rotateRatio: 0.15,
-        rotationSteps: 2,
+        rotateRatio: 0,          // 전부 가로쓰기 — 한글은 세로로 돌면 읽기 어렵다
         shuffle: false,
         drawOutOfBound: false,
         shrinkToFit: true,
@@ -264,8 +270,8 @@
 
     // 질문·날짜가 함께 담긴 PNG로 저장
     document.getElementById("saveBtn").addEventListener("click", () => {
-      const pad = 28;
-      const headerHeight = 96;
+      const pad = Math.round(28 * dpr);
+      const headerHeight = Math.round(96 * dpr);
       const out = document.createElement("canvas");
       out.width = canvas.width;
       out.height = canvas.height + headerHeight;
@@ -277,21 +283,21 @@
       // 질문 (폭에 맞게 글자 크기 자동 축소)
       const question = questionEl.textContent;
       const fontStack = '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif';
-      let fontSize = 30;
+      let fontSize = Math.round(30 * dpr);
       ctx.textBaseline = "top";
       do {
         ctx.font = `700 ${fontSize}px ${fontStack}`;
         if (ctx.measureText(question).width <= out.width - pad * 2) break;
         fontSize -= 2;
-      } while (fontSize > 14);
+      } while (fontSize > 14 * dpr);
       ctx.fillStyle = state.dark ? "#f5f5f7" : "#1d1d1f";
       ctx.fillText(question, pad, pad);
 
       // 날짜 · 코드 · 통계
       const today = todayStamp();
-      ctx.font = `400 15px ${fontStack}`;
+      ctx.font = `400 ${Math.round(15 * dpr)}px ${fontStack}`;
       ctx.fillStyle = state.dark ? "#a1a1a6" : "#86868b";
-      ctx.fillText(`${today.dot} · 코드 ${code} · 참여 ${state.clients.size}명 · 단어 ${state.totalEntries}개 · EUNACLASS`, pad, pad + fontSize + 12);
+      ctx.fillText(`${today.dot} · 코드 ${code} · 참여 ${state.clients.size}명 · 단어 ${state.totalEntries}개 · EUNACLASS`, pad, pad + fontSize + 12 * dpr);
 
       ctx.drawImage(canvas, 0, headerHeight);
 
