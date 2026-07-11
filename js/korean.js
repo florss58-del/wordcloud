@@ -41,6 +41,51 @@ const PROTECTED_WORDS = new Set([
   "동아리", "우렁이", "지팡이", "할아버지", "어버이"
 ]);
 
+// 같은 대상을 가리키는 표기·오타를 대표 이름 하나로 합친다.
+// 집계가 갈리면 "챗GPT"가 여러 조각으로 쪼개져 워드클라우드의 메시지가 흐려진다.
+const WORD_ALIASES = [
+  ["챗GPT", ["챗지피티", "쳇지피티", "챗치피티", "쳇치피티", "챗지피디", "챗지티피", "챗지비티",
+    "첫지피티", "첫지피터", "챗지파티", "캣지피티", "채지피티", "지피티", "지피디",
+    "chatgpt", "chatgft", "chatgtp", "챗gpt", "쳇gpt", "gpt", "openai", "오픈ai"]],
+  ["제미나이", ["제미나이", "제미나", "제미니", "재미나이", "재미나", "에미나", "저미나이", "지미나이",
+    "gemini", "gimini", "jemini"]],
+  ["클로드", ["클로드", "클로드ai", "claude"]],
+  ["수노", ["수노", "스노", "suno"]],
+  ["구글", ["구글ai", "구글", "google"]],
+  ["그록", ["그록", "그룩", "grok"]],
+  ["뤼튼", ["뤼튼", "뤼든", "wrtn"]],
+  ["캔바", ["캔바", "칸바", "canva"]],
+  ["퍼플렉시티", ["퍼플렉시티", "perplexity"]],
+  ["코파일럿", ["코파일럿", "copilot"]],
+  ["나노바나나", ["나노바나나", "나노바나", "nanobanana"]],
+  ["콴다", ["콴다", "qanda"]],
+  ["제타", ["제타ai", "zetaai", "zeta"]],
+  ["없음", ["없습니다", "없어요", "없음", "없다", "모르겠", "모름", "안써봤", "사용안"]]
+];
+
+// 긴 별칭부터 검사 (예: "챗지피티"를 "지피티"보다 먼저 지운다)
+const ALIAS_PAIRS = WORD_ALIASES
+  .flatMap(([canonical, aliases]) => aliases.map((alias) => [alias, canonical]))
+  .sort((a, b) => b[0].length - a[0].length);
+
+/**
+ * 한 사람이 적은 답에서 아는 이름들을 뽑아 대표 이름으로 바꾼다.
+ * "챗지피티제미나이구글"처럼 여러 개를 붙여 쓴 답도 각각으로 나눈다.
+ * 아는 이름이 하나도 없으면 원래 단어를 그대로 돌려준다.
+ * @returns {string[]}
+ */
+function expandAliases(word) {
+  if (typeof word !== "string" || !word) return [];
+  let rest = word.toLowerCase();
+  const found = [];
+  for (const [alias, canonical] of ALIAS_PAIRS) {
+    if (!rest.includes(alias)) continue;
+    rest = rest.split(alias).join(" ");
+    if (!found.includes(canonical)) found.push(canonical);
+  }
+  return found.length ? found : [word];
+}
+
 /**
  * 입력 문자열을 정규화된 단어로 변환한다.
  * @returns {string} 정규화된 단어. 유효하지 않으면 빈 문자열.

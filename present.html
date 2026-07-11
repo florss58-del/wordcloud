@@ -83,6 +83,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="./js/firebase-config.js"></script>
   <script src="./js/common.js"></script>
+  <script src="./js/korean.js"></script>
   <script src="./js/auth.js"></script>
   <script>
     const db = initFirebase();
@@ -168,12 +169,15 @@
       const palette = state.dark ? PALETTE_DARK : PALETTE_LIGHT;
       // 화면 크기와 최대 빈도에 맞춰 글자 크기 계산 (단어가 적을수록 크게)
       const base = Math.min(canvas.width, canvas.height);
-      const density = Math.max(0.75, Math.min(1.25, 14 / Math.sqrt(list.length)));
-      const factor = (base / 7) * density / Math.sqrt(maxCount);
+      // 단어가 적으면 크게, 많으면 작게 — 넘치면 wordcloud2의 shrinkToFit이 알아서 줄인다
+      const density = Math.max(0.8, Math.min(2.4, 14 / Math.sqrt(list.length)));
+      const factor = (base / 6) * density / Math.sqrt(maxCount);
 
       WordCloud(canvas, {
         list,
-        gridSize: Math.max(6, Math.round(base / 90)),
+        gridSize: Math.max(8, Math.round(base / 70)),   // 단어 사이 여백
+        // 가로로 넓은 화면에서 원형으로 뭉치지 않고 좌우까지 채우도록
+        ellipticity: canvas.height / canvas.width,
         weightFactor: (count) => Math.max(22 * dpr, Math.sqrt(count) * factor),
         fontFamily: '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif',
         fontWeight: 700,
@@ -456,7 +460,10 @@
       sessionRef(db, code).child("entries").on("child_added", (child) => {
         const entry = child.val();
         if (!entry || typeof entry.w !== "string") return;
-        state.counts.set(entry.w, (state.counts.get(entry.w) || 0) + 1);
+        // 같은 대상의 오타·표기 차이를 대표 이름으로 합쳐서 집계 (챗지피티·쳇지피티·chatgpt → 챗GPT)
+        expandAliases(entry.w).forEach((word) => {
+          state.counts.set(word, (state.counts.get(word) || 0) + 1);
+        });
         if (entry.c) state.clients.add(entry.c);
         state.totalEntries += 1;
         latestWordEl.innerHTML = `방금 도착: <strong>${escapeHtml(entry.w)}</strong>`;
