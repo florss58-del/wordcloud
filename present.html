@@ -31,6 +31,7 @@
       <button id="pauseBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></svg> 일시정지</button>
       <button id="themeBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg> 어둡게</button>
       <button id="qrToggleBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg> QR 숨기기</button>
+      <button id="rareBtn" class="tool-btn" title="한 사람만 적은 단어(오타·장난)를 화면에서 감춥니다"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg> 1표 숨기기</button>
       <button id="resultsBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg> 결과 보기</button>
       <button id="saveBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> PNG 저장</button>
       <button id="resetBtn" class="tool-btn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> 초기화</button>
@@ -105,7 +106,9 @@
       eye: svgIcon('<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'),
       eyeOff: svgIcon('<path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.4 10.4 0 0 1 12 5c7 0 10 7 10 7a13.2 13.2 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/>'),
       lock: svgIcon('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
-      unlock: svgIcon('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>')
+      unlock: svgIcon('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>'),
+      filter: svgIcon('<path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/>'),
+      filterOff: svgIcon('<path d="M2 2 22 22"/><path d="M22 3H5.6"/><path d="M10 8.5V12l4 2v-4.5"/>')
     };
 
     // 단어 색상 팔레트 — 흰 배경·어두운 배경 모두에서 대비가 충분한 진한 톤만 사용
@@ -119,7 +122,8 @@
       totalEntries: 0,
       paused: false,
       dirty: false,
-      dark: false
+      dark: false,
+      hideRare: false        // 1표만 받은 단어 감추기
     };
 
     let renderTimer = null;
@@ -146,10 +150,16 @@
     const NO_ANSWER = new Set(["없음", "모르겠", "모름"]);
 
     function visibleList() {
-      return [...state.counts.entries()]
+      const list = [...state.counts.entries()]
         .filter(([word]) => !state.hidden.has(word) && !NO_ANSWER.has(word))
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, MAX_WORDS);
+        .sort((a, b) => b[1] - a[1]);
+
+      // 1표짜리(오타·장난)를 감춘다. 단, 전부 1표뿐이면 화면이 비므로 그대로 둔다
+      if (state.hideRare) {
+        const repeated = list.filter(([, count]) => count >= 2);
+        if (repeated.length) return repeated.slice(0, MAX_WORDS);
+      }
+      return list.slice(0, MAX_WORDS);
     }
 
     // 단어마다 색을 고정(같은 단어는 늘 같은 색)하고, 많이 나온 단어일수록 진하게
@@ -241,6 +251,15 @@
       pauseBtn.innerHTML = state.paused ? ICONS.play + " 재개" : ICONS.pause + " 일시정지";
       pauseBtn.classList.toggle("active", state.paused);
       if (!state.paused && state.dirty) scheduleRender();
+    });
+
+    const rareBtn = document.getElementById("rareBtn");
+    rareBtn.addEventListener("click", () => {
+      state.hideRare = !state.hideRare;
+      rareBtn.innerHTML = (state.hideRare ? ICONS.filterOff : ICONS.filter) +
+        (state.hideRare ? " 1표 보이기" : " 1표 숨기기");
+      rareBtn.classList.toggle("active", state.hideRare);
+      renderCloud();
     });
 
     const themeBtn = document.getElementById("themeBtn");

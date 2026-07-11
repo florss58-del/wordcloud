@@ -144,6 +144,15 @@
 
       const result = inputMode === "phrase" ? validatePhrase(wordInput.value) : validateWord(wordInput.value);
       if (!result.ok) { setStatus(result.reason, "error"); return; }
+      // 답이 아닌 게 분명한 입력만 막는다 (세션 코드 그대로 적기, 한 글자 답)
+      if (result.word.toUpperCase() === code) {
+        setStatus("참여 코드 말고, 질문에 대한 답을 적어주세요.", "error");
+        return;
+      }
+      if (inputMode === "word" && result.word.length < 2) {
+        setStatus("두 글자 이상으로 적어주세요.", "error");
+        return;
+      }
       if (myWords.includes(result.word)) {
         setStatus("이미 제출한 단어예요. 다른 단어를 적어주세요.", "error");
         return;
