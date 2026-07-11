@@ -8,34 +8,42 @@
   <link rel="stylesheet" href="./css/style.css?v=8" />
   <style>
     .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    /* 위: 코드 배지 + 이름·질문 / 아래: 버튼 — 이름이 버튼에 밀려 잘리지 않도록 */
     .session-item {
-      display: flex; align-items: center; gap: 0.8rem;
-      border: 1px solid var(--border); border-radius: 14px; padding: 0.75rem 0.95rem;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      grid-template-areas: "badge info" "actions actions";
+      gap: 0.55rem 0.8rem; align-items: center;
+      border: 1px solid var(--border); border-radius: 14px; padding: 0.85rem 0.95rem;
     }
-    .session-info { flex: 1; min-width: 0; }
-    .session-name { font-weight: 600; font-size: 0.95rem; }
+    .session-info { grid-area: info; min-width: 0; }
+    .session-name {
+      font-weight: 600; font-size: 0.98rem; word-break: keep-all;
+      overflow-wrap: anywhere; line-height: 1.35;
+    }
     .session-q {
-      font-size: 0.82rem; color: var(--muted);
+      margin-top: 0.15rem; font-size: 0.83rem; color: var(--muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .session-code-badge {
+      grid-area: badge; align-self: center;
       font-weight: 600; letter-spacing: 0.15em; color: var(--accent);
-      background: var(--accent-soft); border-radius: 10px; padding: 0.32rem 0.65rem; font-size: 0.9rem;
+      background: var(--accent-soft); border-radius: 10px; padding: 0.4rem 0.7rem; font-size: 0.95rem;
     }
-    .session-actions { display: flex; gap: 0.4rem; }
+    .session-actions {
+      grid-area: actions;
+      display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: flex-end;
+      padding-top: 0.45rem; border-top: 1px solid var(--border);
+    }
     .session-actions .tool-btn { white-space: nowrap; }
     .tool-btn.danger { color: var(--danger); }
     .tool-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
-    .session-item.editing { align-items: stretch; }
+    .session-item.editing { display: block; }
     .session-edit { display: flex; flex-direction: column; gap: 0.5rem; width: 100%; }
     .session-edit .input { font-size: 0.9rem; }
-    .session-edit .session-actions { justify-content: flex-end; }
+    .session-edit .session-actions { justify-content: flex-end; border-top: 0; padding-top: 0; }
     .session-edit .status-msg { margin: 0; }
     .empty-list { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 1rem 0; }
-    @media (max-width: 640px) {
-      .session-item { flex-wrap: wrap; }
-      .session-info { flex-basis: 100%; }
-    }
   </style>
 </head>
 <body class="auth-pending">
@@ -297,8 +305,9 @@
 
       try {
         await sessionRef(db, s.code).remove();
-      } catch (_) {
-        alert("삭제에 실패했습니다. 로그인 상태와 보안 규칙을 확인해 주세요.");
+      } catch (err) {
+        const detail = err && (err.code || err.message) ? `\n(${err.code || ""} ${err.message || ""})`.trim() : "";
+        alert("삭제에 실패했습니다. 로그인 상태와 보안 규칙을 확인해 주세요." + detail);
         return;
       }
       if (mySessions.some((m) => m.code === s.code)) {
