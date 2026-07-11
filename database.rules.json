@@ -3,6 +3,27 @@
     ".read": false,
     ".write": false,
 
+    "instructors": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+
+        "sessions": {
+          "$code": {
+            ".validate": "newData.hasChildren(['name', 'created'])",
+            "name": { ".validate": "newData.isString() && newData.val().length <= 40" },
+            "q": { ".validate": "newData.isString() && newData.val().length <= 80" },
+            "mode": { ".validate": "newData.val() === 'word' || newData.val() === 'phrase'" },
+            "max": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5" },
+            "created": { ".validate": "newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "$other": { ".validate": false }
+      }
+    },
+
     "sessions": {
       "$code": {
         ".read": true,

@@ -78,8 +78,8 @@
       <div class="card">
         <h2><svg class="icon title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg> 내 세션 목록</h2>
         <div id="sessionList" class="session-list"></div>
-        <p class="form-hint" style="margin-top:0.8rem">
-          목록은 이 브라우저에 저장됩니다. 다른 컴퓨터에서는 아래 “코드로 열기”를 사용하면 목록에 다시 추가됩니다.
+        <p id="listHint" class="form-hint" style="margin-top:0.8rem">
+          목록은 강사 계정에 저장됩니다. 다른 컴퓨터에서 로그인해도 같은 목록이 보입니다.
         </p>
       </div>
 
@@ -118,28 +118,91 @@
     const reopenStatus = document.getElementById("reopenStatus");
     const STORAGE_KEY = "wc_my_sessions";
 
-    /* ── 내 세션 목록 (localStorage) ── */
-    function loadMySessions() {
+    /* ── 내 세션 목록 (강사 계정 기준 클라우드 저장 · localStorage는 캐시) ── */
+    let instructorUid = null;
+    let mySessions = [];
+    let cloudReady = false;   // 규칙 미게시 등으로 실패하면 이 브라우저 목록만 사용
+
+    function myListRef() {
+      return db.ref("instructors/" + instructorUid + "/sessions");
+    }
+
+    function localSessions() {
       try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
       catch (_) { return []; }
     }
 
-    function saveMySession(entry) {
-      const sessions = loadMySessions().filter((s) => s.code !== entry.code);
-      sessions.unshift(entry);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions.slice(0, 100)));
+    function cacheLocally() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(mySessions.slice(0, 100)));
     }
 
-    function removeMySession(code) {
-      const sessions = loadMySessions().filter((s) => s.code !== code);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    function byNewest(list) {
+      return [...list].sort((a, b) => (b.created || 0) - (a.created || 0));
+    }
+
+    // 보안 규칙 검증을 통과하도록 필드를 정규화
+    function cloudEntry(s) {
+      return {
+        name: (s.name || "(이름 없음)").slice(0, 40),
+        q: (s.q || "").slice(0, 80),
+        mode: s.mode === "phrase" ? "phrase" : "word",
+        max: Number(s.max) >= 1 && Number(s.max) <= 5 ? Number(s.max) : 3,
+        created: Number(s.created) || Date.now()
+      };
+    }
+
+    async function saveMySession(entry) {
+      mySessions = byNewest([entry, ...mySessions.filter((s) => s.code !== entry.code)]);
+      cacheLocally();
+      if (cloudReady) {
+        try { await myListRef().child(entry.code).set(cloudEntry(entry)); } catch (_) {}
+      }
+    }
+
+    async function removeMySession(code) {
+      mySessions = mySessions.filter((s) => s.code !== code);
+      cacheLocally();
       renderSessionList();
+      if (cloudReady) {
+        try { await myListRef().child(code).remove(); } catch (_) {}
+      }
     }
 
-    // 목록 내 순서를 유지하며 항목 정보만 갱신
-    function updateMySession(code, patch) {
-      const sessions = loadMySessions().map((s) => (s.code === code ? { ...s, ...patch } : s));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+    async function updateMySession(code, patch) {
+      mySessions = mySessions.map((s) => (s.code === code ? { ...s, ...patch } : s));
+      cacheLocally();
+      if (cloudReady) {
+        try { await myListRef().child(code).update(patch); } catch (_) {}
+      }
+    }
+
+    // 로그인한 계정의 목록을 불러오고, 이 브라우저에만 있던 세션은 계정으로 올린다
+    async function initSessionList(user) {
+      instructorUid = user.uid;
+      const local = localSessions();
+      try {
+        const snap = await myListRef().get();
+        const cloud = [];
+        snap.forEach((child) => { cloud.push({ code: child.key, ...child.val() }); });
+        cloudReady = true;
+
+        const known = new Set(cloud.map((s) => s.code));
+        const onlyLocal = local.filter((s) => s.code && !known.has(s.code));
+        mySessions = byNewest([...cloud, ...onlyLocal]);
+        cacheLocally();
+        renderSessionList();
+
+        for (const s of onlyLocal) {
+          try { await myListRef().child(s.code).set(cloudEntry(s)); } catch (_) {}
+        }
+      } catch (_) {
+        cloudReady = false;
+        mySessions = byNewest(local);
+        renderSessionList();
+        const hint = document.getElementById("listHint");
+        hint.textContent = "계정 목록을 불러오지 못했습니다. 이 브라우저에 저장된 목록만 표시합니다. (보안 규칙 재게시가 필요할 수 있습니다)";
+        hint.className = "status-msg error";
+      }
     }
 
     function formatDate(timestamp) {
@@ -150,7 +213,7 @@
 
     function renderSessionList() {
       const listEl = document.getElementById("sessionList");
-      const sessions = loadMySessions();
+      const sessions = mySessions;
       if (sessions.length === 0) {
         listEl.innerHTML = '<p class="empty-list">아직 만든 세션이 없습니다.</p>';
         return;
@@ -265,7 +328,7 @@
         editStatus.className = "status-msg";
         try {
           await sessionRef(db, s.code).child("meta").update({ name: newName, q: newQ });
-          updateMySession(s.code, { name: newName, q: newQ });
+          await updateMySession(s.code, { name: newName, q: newQ });
           renderSessionList();
         } catch (err) {
           editStatus.textContent = "저장에 실패했습니다. 로그인 상태를 확인하고 다시 시도해 주세요.";
@@ -329,7 +392,7 @@
         name,
         created: firebase.database.ServerValue.TIMESTAMP
       });
-      saveMySession({ code, name, q: question, mode, max: maxPerUser, created });
+      await saveMySession({ code, name, q: question, mode, max: maxPerUser, created });
       location.href = "present.html?code=" + encodeURIComponent(code);
     });
 
@@ -349,7 +412,7 @@
         return;
       }
       const meta = snap.val();
-      saveMySession({
+      await saveMySession({
         code,
         name: meta.name || "(이름 없음)",
         q: meta.q,
@@ -367,9 +430,9 @@
     });
 
     /* ── 초기화 (강사 로그인 후 진입) ── */
-    requireInstructor(() => {
+    requireInstructor((user) => {
       document.getElementById("sessionName").value = todayPrefix();
-      renderSessionList();
+      initSessionList(user);
     });
   </script>
 </body>
