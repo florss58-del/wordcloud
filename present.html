@@ -142,12 +142,32 @@
 
     // 상위 60개만 — 너무 많으면 글자가 작아져 뒤에서 안 보인다
     const MAX_WORDS = 60;
+    // 무응답성 답 — 클라우드에서는 빼고, 결과 보기·CSV에는 그대로 남긴다
+    const NO_ANSWER = new Set(["없음", "모르겠", "모름"]);
 
     function visibleList() {
       return [...state.counts.entries()]
-        .filter(([word]) => !state.hidden.has(word))
+        .filter(([word]) => !state.hidden.has(word) && !NO_ANSWER.has(word))
         .sort((a, b) => b[1] - a[1])
         .slice(0, MAX_WORDS);
+    }
+
+    // 단어마다 색을 고정(같은 단어는 늘 같은 색)하고, 많이 나온 단어일수록 진하게
+    function hashOf(word) {
+      let h = 0;
+      for (let i = 0; i < word.length; i++) h = (h * 31 + word.charCodeAt(i)) >>> 0;
+      return h;
+    }
+
+    function colorFor(word, count, maxCount) {
+      const palette = state.dark ? PALETTE_DARK : PALETTE_LIGHT;
+      const hex = palette[hashOf(word) % palette.length];
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      const ratio = maxCount > 1 ? (count - 1) / (maxCount - 1) : 1;
+      const alpha = 0.5 + 0.5 * Math.sqrt(ratio);   // 빈도가 낮을수록 배경에 가깝게 옅어진다
+      return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)})`;
     }
 
     function renderCloud() {
@@ -166,7 +186,6 @@
 
       canvas.style.opacity = "0.45"; // 새 배치 렌더링 시 부드러운 전환
       const maxCount = list[0][1];
-      const palette = state.dark ? PALETTE_DARK : PALETTE_LIGHT;
       // 화면 크기와 최대 빈도에 맞춰 글자 크기 계산 (단어가 적을수록 크게)
       const base = Math.min(canvas.width, canvas.height);
       // 단어가 적으면 크게, 많으면 작게 — 넘치면 wordcloud2의 shrinkToFit이 알아서 줄인다
@@ -175,13 +194,13 @@
 
       WordCloud(canvas, {
         list,
-        gridSize: Math.max(8, Math.round(base / 70)),   // 단어 사이 여백
+        gridSize: Math.max(12, Math.round(base / 35)),   // 작은 단어가 큰 글자 속으로 파고들지 않게
         // 가로로 넓은 화면에서 원형으로 뭉치지 않고 좌우까지 채우도록
         ellipticity: canvas.height / canvas.width,
         weightFactor: (count) => Math.max(22 * dpr, Math.sqrt(count) * factor),
         fontFamily: '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif',
         fontWeight: 700,
-        color: () => palette[Math.floor(Math.random() * palette.length)],
+        color: (word, weight) => colorFor(word, weight, maxCount),
         backgroundColor: state.dark ? "#1d1d1f" : "#ffffff",
         rotateRatio: 0,          // 전부 가로쓰기 — 한글은 세로로 돌면 읽기 어렵다
         shuffle: false,
