@@ -357,3 +357,64 @@ body.present-page.dark { background: #1d1d1f; }
 @media (max-width: 640px) {
   .input, .select, .textarea { font-size: 16px; }
 }
+
+/* ── 작품 링크 갤러리 (present.html, mode=link) ────────────────
+   워드클라우드 캔버스 자리에 카드 그리드를 깐다. 누르면 새 탭에서 작품이 열린다. */
+.gallery {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.9rem;
+  align-content: start;
+  padding: 1.2rem;
+}
+.gallery-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line, #e5e5ea);
+  border-radius: 16px;
+  background: #fff;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.gallery-card:hover {
+  transform: translateY(-3px);
+  border-color: #0066cc;
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.35);
+}
+.gallery-no {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #86868b;
+  font-variant-numeric: tabular-nums;
+}
+.gallery-nick {
+  font-size: clamp(1.15rem, 2.2vw, 1.6rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #1d1d1f;
+  word-break: break-all;
+}
+.gallery-host {
+  font-size: 0.85rem;
+  color: #0066cc;
+  font-weight: 600;
+  word-break: break-all;
+}
+.gallery-empty {
+  grid-column: 1 / -1;
+  align-self: center;
+  text-align: center;
+  color: #86868b;
+  font-size: 1.1rem;
+  padding: 3rem 0;
+}
+body.dark .gallery-card { background: #2c2c2e; border-color: #3a3a3c; }
+body.dark .gallery-nick { color: #f5f5f7; }
+body.dark .gallery-host { color: #4da3ff; }
+body.dark .gallery-empty { color: #a1a1a6; }
