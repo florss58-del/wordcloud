@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>발표 화면 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=10" />
+  <link rel="stylesheet" href="./css/style.css?v=11" />
 </head>
 <body class="present-page auth-pending">
   <div class="present-wrap">
@@ -494,8 +494,17 @@
         </a>`).join("");
     }
 
-    function addToGallery(entry) {
-      gallery.push({ nick: entry.n || "익명", url: entry.w });
+    function addToGallery(key, entry) {
+      gallery.push({ key, nick: entry.n || "익명", url: entry.w });
+      renderGallery();
+    }
+
+    // 학생이 "고치기"로 다시 올리면 카드가 제자리에서 바뀐다 (새 카드가 생기지 않는다)
+    function updateGallery(key, entry) {
+      const item = gallery.find((g) => g.key === key);
+      if (!item) return;
+      item.nick = entry.n || "익명";
+      item.url = entry.w;
       renderGallery();
     }
 
@@ -547,7 +556,7 @@
         if (!entry || typeof entry.w !== "string") return;
 
         if (linkMode) {
-          addToGallery(entry);
+          addToGallery(child.key, entry);
           if (entry.c) state.clients.add(entry.c);
           state.totalEntries += 1;
           latestWordEl.innerHTML = `방금 도착: <strong>${escapeHtml(entry.n || "익명")}</strong>`;
@@ -565,6 +574,15 @@
         updateStats();
         scheduleRender();
       });
+
+      if (linkMode) {
+        sessionRef(db, code).child("entries").on("child_changed", (child) => {
+          const entry = child.val();
+          if (!entry || typeof entry.w !== "string") return;
+          updateGallery(child.key, entry);
+          latestWordEl.innerHTML = `고쳤어요: <strong>${escapeHtml(entry.n || "익명")}</strong>`;
+        });
+      }
 
       sessionRef(db, code).child("hidden").on("value", (snapshot) => {
         state.hidden = new Set(Object.keys(snapshot.val() || {}));

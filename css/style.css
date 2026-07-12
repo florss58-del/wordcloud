@@ -418,3 +418,15 @@ body.dark .gallery-card { background: #2c2c2e; border-color: #3a3a3c; }
 body.dark .gallery-nick { color: #f5f5f7; }
 body.dark .gallery-host { color: #4da3ff; }
 body.dark .gallery-empty { color: #a1a1a6; }
+
+/* 작품 링크 — 내가 올린 것 확인 + 고치기 (join.html) */
+.join-mylink {
+  margin: 0.9rem 0 0.7rem;
+  padding: 0.7rem 0.9rem;
+  background: #f5f5f7;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #1d1d1f;
+  word-break: break-all;
+  text-align: left;
+}
