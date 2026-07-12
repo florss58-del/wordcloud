@@ -7,7 +7,9 @@
   - CLI 대체: `vercel deploy --prod --yes --scope florss58-dels-projects` (이 PC는 컴퓨터명이 한글이라 `vercel login` 오류 → VERCEL_TOKEN 방식 필요)
 - **Firebase**: 프로젝트 `euna-wordcloud`, RTDB `asia-southeast1`, 설정은 `js/firebase-config.js`
 - **화면**: `index.html`(교육생 코드 입력) / `admin.html`(강사: 세션 생성·내 세션 목록) / `present.html`(발표) / `join.html`(단어 제출)
-- **입력 모드**: `word`(단어·집계) / `phrase`(짧은 문구) / **`link`(작품 링크 — 별명 + 주소, 발표 화면에 카드 갤러리)**. 링크 모드는 집계하지 않고 도착 순서대로 카드에 쌓는다. 1인당 1개
+- **입력 모드**: `word`(단어·집계) / `phrase`(짧은 문구) / **`link`(작품 링크 — 이름 + 주소, 발표 화면에 카드 갤러리)**. 링크 모드는 집계하지 않고 도착 순서대로 카드에 쌓는다. 1인당 1개, 제출 후 **고치기** 가능(같은 clientId만)
+- ⚠️ **링크 모드의 주소 보정**: 제작 도구가 `https://` 없이 복사해 주기도 한다(Canva가 그렇다). `join.html`의 `normalizeUrl()`이 앞을 채운다. **이 함수를 지우면 학생 제출이 전부 막힌다**
+- ⚠️ **링크 모드는 이름이 공개된다**: `sessions/$code`는 `.read: true`(학생 참여용)라 코드를 알면 누구나 읽는다. 이름 + 작품 링크가 사실상 공개 노출된다
 - **강사 인증**: Firebase Authentication(이메일/비밀번호). `admin.html`·`present.html`은 `js/auth.js`의 `requireInstructor()` 로그인 게이트 필요, `join.html`은 인증 없음(학생용)
 - **세션 이름 규칙**: `YYYYMMDD_수업명` (admin에서 날짜 자동 채움)
 - **데이터**: `sessions/{4자리코드}/{meta,entries,hidden,closed}` — meta의 `q`(질문)·`name`(이름)은 로그인 강사가 수정 가능(admin의 "수정"), `created`·`mode`·`max`는 생성 후 불변. 세션 통째 삭제는 로그인 강사만(admin의 "완전 삭제"), 초기화는 entries/hidden만 삭제, closed=true면 학생 제출 차단(발표 화면 "세션 종료" 토글)
@@ -19,8 +21,7 @@
 
 ## 추후 작업 (TODO)
 
-- [ ] **보안 규칙 게시 (링크 모드)**: `database.rules.json`의 `w`(링크 300자·https 강제)·`n`(별명) 규칙을 Firebase 콘솔에 붙여넣고 **게시**. 안 하면 링크 모드 제출이 전부 PERMISSION_DENIED (2026-07-12)
-- [ ] **링크 모드 실제 제출 테스트**: 규칙 게시 후 세션을 만들어 Canva 게시 주소를 한 번 올려 본다 (2026-07-12)
+- [ ] **링크 모드 리허설**: 실제 수업 투입 전에 세션을 만들어 올리기·고치기를 한 번씩 해 본다 (2026-07-12)
 - [ ] **강사 계정 비밀번호 교체**: 현재 비밀번호가 크롬 유출 경고에 걸림 → 콘솔에서 계정 삭제 후 유출 목록에 없는 새 비밀번호로 재생성. 실제 수업 투입 전까지 완료 (2026-07-07)
 - [ ] **작업일지 목차**: `docs/worklog/`의 일지가 10개쯤 쌓이면 `docs/worklog/README.md`에 날짜별 한 줄 목차를 만든다 (2026-07-11 기준 3개)
 
