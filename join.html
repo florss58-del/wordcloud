@@ -159,7 +159,7 @@
         nickField.classList.remove("hidden");
         wordInput.maxLength = 300;
         wordInput.type = "url";
-        wordInput.placeholder = "Canva에서 복사한 사이트 주소를 붙여넣기";
+        wordInput.placeholder = "만든 작품의 주소를 붙여넣기";
         wordInput.inputMode = "url";
         submitBtn.textContent = "내 작품 올리기";
       }
@@ -173,7 +173,7 @@
       });
     }
 
-    /* Canva의 복사 버튼은 "florss58.my.canva.site"처럼 https:// 없이 복사한다.
+    /* 도구마다 주소를 https:// 없이 복사해 주기도 한다 (Canva의 "사이트 주소" 복사 버튼이 그렇다).
        학생이 붙여넣은 그대로 막히면 안 되므로 앞을 채워 준다. 주소가 아니면 null. */
     function normalizeUrl(raw) {
       let url = (raw || "").trim().replace(/\s+/g, "");
@@ -201,7 +201,7 @@
       if (nick.length > 12) { setStatus("이름은 12자까지예요.", "error"); return; }
       if (!wordInput.value.trim()) { setStatus("작품 주소를 붙여넣어 주세요.", "error"); return; }
       if (!url) {
-        setStatus("주소가 아닌 것 같아요. Canva의 “사이트 주소(URL)” 옆 복사 버튼을 눌러 붙여넣어 주세요.", "error");
+        setStatus("주소가 아닌 것 같아요. 작품 주소를 복사해 붙여넣어 주세요.", "error");
         return;
       }
       if (url.length > 300) { setStatus("주소가 너무 길어요. 다시 확인해 주세요.", "error"); return; }
