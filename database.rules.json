@@ -36,7 +36,7 @@
           ".validate": "newData.hasChildren(['q', 'max', 'mode', 'name', 'created'])",
           "q": { ".write": "auth != null", ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
           "max": { ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 5" },
-          "mode": { ".validate": "newData.val() === 'word' || newData.val() === 'phrase'" },
+          "mode": { ".validate": "newData.val() === 'word' || newData.val() === 'phrase' || newData.val() === 'link'" },
           "name": { ".write": "auth != null", ".validate": "newData.isString() && newData.val().length <= 40" },
           "created": { ".validate": "newData.isNumber()" },
           "$other": { ".validate": false }
