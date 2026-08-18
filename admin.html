@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>세션 만들기 (강사용) - 실시간 워드클라우드</title>
   <meta name="robots" content="noindex" />
-  <link rel="stylesheet" href="./css/style.css?v=11" />
+  <link rel="stylesheet" href="./css/style.css?v=12" />
   <style>
     .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
     /* 위: 코드 배지 + 이름·질문 / 아래: 버튼 — 이름이 버튼에 밀려 잘리지 않도록 */
@@ -63,6 +63,11 @@
           <label for="question">질문 (교육생에게 보여질 주제)</label>
           <input id="question" class="input" maxlength="80" placeholder="예) 오늘 수업에서 기대하는 것을 한 단어로 적어주세요" />
         </div>
+        <div class="field">
+          <label for="questionHint">예시 (선택 · 질문 아래 작게 보입니다)</label>
+          <input id="questionHint" class="input" maxlength="60" placeholder="예: 글쓰기 / 이미지 만들기 / 번역 / 검색" />
+          <p class="form-hint">질문과 예시를 합쳐 80자까지 넣을 수 있습니다</p>
+        </div>
         <div class="option-row" style="display:flex;gap:0.8rem">
           <div class="field" style="flex:1">
             <label for="inputMode">입력 형식</label>
@@ -82,8 +87,9 @@
             </select>
           </div>
         </div>
-        <button id="createBtn" class="btn btn-primary btn-block">세션 만들고 발표 화면 열기</button>
+        <button id="createBtn" class="btn btn-primary btn-block">세션 만들기</button>
         <p id="createStatus" class="status-msg"></p>
+        <button id="openLastBtn" class="btn btn-ghost btn-block hidden">방금 만든 세션 발표 화면 열기</button>
       </div>
 
       <div class="card">
@@ -244,7 +250,7 @@
         name.textContent = s.name || "(이름 없음)";
         const q = document.createElement("div");
         q.className = "session-q";
-        q.textContent = `${formatDate(s.created)} · ${s.q || ""}`;
+        q.textContent = `${formatDate(s.created)} · ${splitQuestion(s.q).main}`;
         info.appendChild(name);
         info.appendChild(q);
 
@@ -372,7 +378,7 @@
         name.textContent = s.name;
         const sub = document.createElement("div");
         sub.className = "session-q";
-        sub.textContent = `${formatDate(s.created)} · 단어 ${s.entryCount}개 · ${s.q}`;
+        sub.textContent = `${formatDate(s.created)} · 단어 ${s.entryCount}개 · ${splitQuestion(s.q).main}`;
         info.appendChild(name);
         info.appendChild(sub);
 
@@ -422,16 +428,24 @@
       nameInput.value = s.name || "";
       nameInput.placeholder = "세션 이름 (날짜_수업명)";
 
+      const parts = splitQuestion(s.q);
+
       const qInput = document.createElement("input");
       qInput.className = "input";
       qInput.maxLength = 80;
-      qInput.value = s.q || "";
+      qInput.value = parts.main;
       qInput.placeholder = "질문 (교육생에게 보여질 주제)";
+
+      const hintInput = document.createElement("input");
+      hintInput.className = "input";
+      hintInput.maxLength = 60;
+      hintInput.value = parts.hint;
+      hintInput.placeholder = "예시 (선택 · 질문 아래 작게 보입니다)";
 
       const hint = document.createElement("p");
       hint.className = "form-hint";
       hint.style.margin = "0";
-      hint.textContent = "입력 형식·1인당 개수는 변경할 수 없습니다.";
+      hint.textContent = "질문과 예시는 합쳐 80자까지 · 입력 형식과 1인당 개수는 변경할 수 없습니다.";
 
       const editStatus = document.createElement("p");
       editStatus.className = "status-msg";
@@ -448,14 +462,20 @@
       cancelBtn.addEventListener("click", renderSessionList);
       saveBtn.addEventListener("click", async () => {
         const newName = nameInput.value.trim();
-        const newQ = qInput.value.trim();
+        const newMain = qInput.value.trim();
+        const newQ = joinQuestion(newMain, hintInput.value);
         if (!newName) {
           editStatus.textContent = "세션 이름을 입력해 주세요.";
           editStatus.className = "status-msg error";
           return;
         }
-        if (!newQ) {
+        if (!newMain) {
           editStatus.textContent = "질문을 입력해 주세요.";
+          editStatus.className = "status-msg error";
+          return;
+        }
+        if (newQ.length > 80) {
+          editStatus.textContent = `질문과 예시를 합쳐 80자까지 넣을 수 있습니다. 지금은 ${newQ.length}자입니다.`;
           editStatus.className = "status-msg error";
           return;
         }
@@ -479,6 +499,7 @@
       btnRow.appendChild(cancelBtn);
       form.appendChild(nameInput);
       form.appendChild(qInput);
+      form.appendChild(hintInput);
       form.appendChild(hint);
       form.appendChild(editStatus);
       form.appendChild(btnRow);
@@ -496,6 +517,8 @@
       if (!db) return;
       const name = document.getElementById("sessionName").value.trim();
       const question = document.getElementById("question").value.trim();
+      const questionHint = document.getElementById("questionHint").value.trim();
+      const fullQuestion = joinQuestion(question, questionHint);
       if (!name || name === todayPrefix()) {
         createStatus.textContent = "세션 이름을 입력해 주세요. (예: 20260712_AI기초)";
         createStatus.className = "status-msg error";
@@ -503,6 +526,12 @@
       }
       if (!question) {
         createStatus.textContent = "질문을 입력해 주세요.";
+        createStatus.className = "status-msg error";
+        return;
+      }
+      // 질문과 예시는 한 값에 함께 담기므로 합친 길이가 보안 규칙(80자)을 넘으면 저장이 거부된다
+      if (fullQuestion.length > 80) {
+        createStatus.textContent = `질문과 예시를 합쳐 80자까지 넣을 수 있습니다. 지금은 ${fullQuestion.length}자입니다.`;
         createStatus.className = "status-msg error";
         return;
       }
@@ -525,14 +554,30 @@
 
       const created = Date.now();
       await sessionRef(db, code).child("meta").set({
-        q: question,
+        q: fullQuestion,
         max: maxPerUser,
         mode,
         name,
         created: firebase.database.ServerValue.TIMESTAMP
       });
-      await saveMySession({ code, name, q: question, mode, max: maxPerUser, created });
-      location.href = "present.html?code=" + encodeURIComponent(code);
+      await saveMySession({ code, name, q: fullQuestion, mode, max: maxPerUser, created });
+      renderSessionList();
+
+      // 발표 화면으로 넘기지 않는다 — 한 자리에서 5교시·6교시를 이어 만들 수 있어야 한다
+      createStatus.textContent = `코드 ${code} · 세션을 만들었습니다. 이어서 다음 세션을 만들 수 있습니다.`;
+      createStatus.className = "status-msg success";
+      const openLastBtn = document.getElementById("openLastBtn");
+      openLastBtn.dataset.code = code;
+      openLastBtn.classList.remove("hidden");
+      // 입력값은 지우지 않는다. 이름 끝의 교시만 고쳐 다시 누르면 된다
+      const nameField = document.getElementById("sessionName");
+      nameField.focus();
+      nameField.setSelectionRange(nameField.value.length, nameField.value.length);
+    });
+
+    document.getElementById("openLastBtn").addEventListener("click", (e) => {
+      const last = e.currentTarget.dataset.code;
+      if (last) location.href = "present.html?code=" + encodeURIComponent(last);
     });
 
     /* ── 코드로 열기 (목록에도 추가) ── */
