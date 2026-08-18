@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>발표 화면 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=12" />
+  <link rel="stylesheet" href="./css/style.css?v=13" />
 </head>
 <body class="present-page auth-pending">
   <div class="present-wrap">
@@ -285,18 +285,26 @@
 
     /* ── QR 크게 보기 ── */
     const qrFocus = document.getElementById("qrFocus");
-    let bigQrRendered = false;
+    let bigQrSize = 0;
+
+    // 질문·예시·코드·안내문이 함께 들어가야 한다. 세로가 기준이다
+    function qrFocusSize() {
+      return Math.max(180, Math.min(460, Math.floor(Math.min(window.innerWidth * 0.8, window.innerHeight * 0.44))));
+    }
 
     function openQrFocus() {
-      if (!bigQrRendered) {
-        const size = Math.min(520, Math.floor(Math.min(window.innerWidth, window.innerHeight) * 0.52));
-        new QRCode(document.getElementById("qrBoxBig"), {
+      const size = qrFocusSize();
+      // 한 번 그려 두면 창 크기가 바뀐 뒤 화면에 안 맞는다 → 차이가 크면 다시 그린다
+      if (Math.abs(size - bigQrSize) > 24) {
+        const box = document.getElementById("qrBoxBig");
+        box.innerHTML = "";
+        new QRCode(box, {
           text: joinUrlFor(code),
           width: size,
           height: size,
           correctLevel: QRCode.CorrectLevel.M
         });
-        bigQrRendered = true;
+        bigQrSize = size;
       }
       renderQuestion(document.getElementById("qrFocusQuestion"), questionRaw);
       document.getElementById("qrFocusCode").textContent = code;
