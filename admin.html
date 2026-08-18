@@ -94,6 +94,15 @@
 
       <div class="card">
         <h2><svg class="icon title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg> 내 세션 목록</h2>
+        <div class="field" style="margin-bottom:0.9rem">
+          <label for="sortMode">정렬</label>
+          <select id="sortMode" class="select">
+            <option value="new">최신 순 (만든 시각)</option>
+            <option value="name">이름 순</option>
+            <option value="q">질문 순</option>
+          </select>
+          <p class="form-hint">같은 질문을 쓰는 세션을 나란히 보려면 질문 순, 교시 순서로 보려면 이름 순</p>
+        </div>
         <div id="sessionList" class="session-list"></div>
         <p id="listHint" class="form-hint" style="margin-top:0.8rem">
           목록은 강사 계정에 저장됩니다. 다른 컴퓨터에서 로그인해도 같은 목록이 보입니다.
@@ -231,9 +240,36 @@
       return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
     }
 
+    /* ── 목록 정렬 ──
+       같은 질문(5교시·6교시)을 나란히 보려면 만든 시각 순으로는 흩어진다 */
+    const SORT_KEY = "wc_admin_sort";
+    let sortMode = localStorage.getItem(SORT_KEY) || "new";
+
+    function sortSessions(list) {
+      const byNew = (a, b) => (b.created || 0) - (a.created || 0);
+      const byName = (a, b) => (a.name || "").localeCompare(b.name || "", "ko");
+      const arr = [...list];
+      if (sortMode === "name") return arr.sort((a, b) => byName(a, b) || byNew(a, b));
+      if (sortMode === "q") {
+        // 같은 질문끼리 모으되, 묶음의 순서는 가나다가 아니라 최근에 만든 것부터
+        const newestOf = new Map();
+        arr.forEach((s) => {
+          const key = splitQuestion(s.q).main;
+          newestOf.set(key, Math.max(newestOf.get(key) || 0, s.created || 0));
+        });
+        return arr.sort((a, b) => {
+          const ka = splitQuestion(a.q).main;
+          const kb = splitQuestion(b.q).main;
+          if (ka !== kb) return (newestOf.get(kb) || 0) - (newestOf.get(ka) || 0);
+          return byName(a, b) || byNew(a, b);
+        });
+      }
+      return arr.sort(byNew);
+    }
+
     function renderSessionList() {
       const listEl = document.getElementById("sessionList");
-      const sessions = mySessions;
+      const sessions = sortSessions(mySessions);
       if (sessions.length === 0) {
         listEl.innerHTML = '<p class="empty-list">아직 만든 세션이 없습니다.</p>';
         return;
@@ -359,7 +395,7 @@
           entryCount: value.entries ? Object.keys(value.entries).length : 0
         });
       });
-      found.sort((a, b) => (b.created || 0) - (a.created || 0));
+      const foundSorted = sortSessions(found);
 
       if (found.length === 0) {
         findStatus.textContent = "목록에 없는 세션이 없습니다.";
@@ -367,7 +403,7 @@
       }
       findStatus.textContent = `목록에 없는 세션 ${found.length}개를 찾았습니다. 필요한 세션을 목록에 추가하세요.`;
 
-      found.forEach((s) => {
+      foundSorted.forEach((s) => {
         const item = document.createElement("div");
         item.className = "session-item";
 
@@ -413,6 +449,16 @@
     }
 
     document.getElementById("findBtn").addEventListener("click", findMissingSessions);
+
+    const sortSelect = document.getElementById("sortMode");
+    sortSelect.value = sortMode;
+    sortSelect.addEventListener("change", () => {
+      sortMode = sortSelect.value;
+      localStorage.setItem(SORT_KEY, sortMode);
+      renderSessionList();
+      // 지난 세션 목록이 펼쳐져 있으면 그것도 같은 순서로 다시 그린다
+      if (foundListEl.children.length) findMissingSessions();
+    });
 
     /* ── 세션 이름·질문 수정 (인라인) ── */
     function startEdit(item, s) {
