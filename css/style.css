@@ -240,7 +240,14 @@ body.present-page.dark { background: #1d1d1f; }
   background: #fff; padding: clamp(10px, 1.6vh, 18px); border-radius: 18px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18); max-width: 90vw;
 }
-.qr-focus-box canvas, .qr-focus-box img { display: block; max-width: 100%; height: auto; }
+/* qrcode.js는 캔버스로 그린 뒤 이미지로 바꿔치기한다. 이미지가 해독되기 전에는 높이가 0이라
+   상자가 납작해지고 아래 내용이 밀린다 → 자리를 픽셀로 미리 잡아 둔다 (--qr-size는 JS가 넣는다) */
+#qrBox canvas, #qrBox img,
+.qr-focus-box canvas, .qr-focus-box img {
+  display: block;
+  width: var(--qr-size, auto);
+  height: var(--qr-size, auto);
+}
 .qr-focus-code {
   font-size: clamp(2.4rem, 8vh, 6rem); font-weight: 600; letter-spacing: 0.3em; color: var(--accent);
 }

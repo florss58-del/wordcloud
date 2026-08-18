@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>발표 화면 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=14" />
+  <link rel="stylesheet" href="./css/style.css?v=15" />
 </head>
 <body class="present-page auth-pending">
   <div class="present-wrap">
@@ -316,6 +316,7 @@
       if (Math.abs(size - bigQrSize) > 16) {
         const box = document.getElementById("qrBoxBig");
         box.innerHTML = "";
+        box.style.setProperty("--qr-size", size + "px");   // 캔버스·이미지 교체에도 자리가 흔들리지 않게
         new QRCode(box, {
           text: joinUrlFor(code),
           width: size,
@@ -570,7 +571,9 @@
 
       canvas.addEventListener("wordcloudstop", () => { canvas.style.opacity = "1"; });
 
-      new QRCode(document.getElementById("qrBox"), {
+      const smallQrBox = document.getElementById("qrBox");
+      smallQrBox.style.setProperty("--qr-size", "110px");
+      new QRCode(smallQrBox, {
         text: joinUrlFor(code),
         width: 110,
         height: 110,
