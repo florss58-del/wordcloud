@@ -12,6 +12,7 @@
 - ⚠️ **링크 모드는 이름이 공개된다**: `sessions/$code`는 `.read: true`(학생 참여용)라 코드를 알면 누구나 읽는다. 이름 + 작품 링크가 사실상 공개 노출된다
 - **강사 인증**: Firebase Authentication(이메일/비밀번호). `admin.html`·`present.html`은 `js/auth.js`의 `requireInstructor()` 로그인 게이트 필요, `join.html`은 인증 없음(학생용)
 - **세션 이름 규칙**: `YYYYMMDD_수업명` (admin에서 날짜 자동 채움)
+- **질문 + 예시**: `meta.q` 한 값에 `"질문\n예시"`로 담는다(둘째 줄은 발표·학생 화면에서 작게). 별도 항목을 만들지 않은 이유는 `meta`에 `$other: validate false`가 걸려 보안 규칙을 다시 게시해야 하기 때문. **질문과 예시가 80자를 함께 나눠 쓴다** — `js/common.js`의 `splitQuestion`·`joinQuestion`·`renderQuestion`을 쓰고, PNG 저장·문서 제목·결과 표처럼 줄바꿈을 못 쓰는 곳은 앞줄만 쓴다
 - **데이터**: `sessions/{4자리코드}/{meta,entries,hidden,closed}` — meta의 `q`(질문)·`name`(이름)은 로그인 강사가 수정 가능(admin의 "수정"), `created`·`mode`·`max`는 생성 후 불변. 세션 통째 삭제는 로그인 강사만(admin의 "완전 삭제"), 초기화는 entries/hidden만 삭제, closed=true면 학생 제출 차단(발표 화면 "세션 종료" 토글)
 - **강사 세션 목록**: `instructors/{uid}/sessions/{코드}` — 계정에 저장되므로 기기를 바꿔도 유지. localStorage는 캐시일 뿐. 목록에 없는 세션은 admin의 "목록에 없는 지난 세션 찾기"로 복구
 - **보안 규칙**: `database.rules.json`이 원본. 콘솔(Realtime Database → 규칙)에 붙여넣고 **게시**해야 적용됨(안 하면 PERMISSION_DENIED). meta 생성·수정·세션 삭제·hidden/closed 쓰기·entries 초기화·세션 목록 열거는 로그인 강사만, entries 제출(push)은 익명 허용(단 세션 존재 + closed 아님), 코드 단위 읽기는 공개(학생 참여용)
@@ -38,6 +39,7 @@
 
 - Firebase 보안 규칙에서 entries의 `w` 길이 제한은 **40자** (문구 모드 30자 + 여유). **단 링크 모드는 300자 + `https://` 강제**
 - 강사 로그인 전제 조건(Firebase 콘솔): ① Authentication → 이메일/비밀번호 사용 설정 ② 강사 계정 생성 ③ 승인된 도메인에 `wordcloud-mu.vercel.app` 추가
+- admin의 “세션 만들기”는 **발표 화면으로 넘어가지 않는다**(한 자리에서 교시별로 이어 만드는 흐름). 입력값도 남는다 → **이름을 안 고치고 두 번 누르면 이름이 같은 세션이 둘 생긴다**
 - 수업 전에 세션을 미리 만들어 두고 당일 또 만들면, **이름·질문이 같은 빈 세션과 헷갈린다**(2026-07-09에 실제로 "데이터가 사라진 줄" 아는 일이 있었음). admin 목록의 "지난 세션 찾기"는 단어 수를 함께 보여주므로 이걸로 구분한다
 - `join.html`은 세션의 `meta.mode`(word/phrase/link)에 따라 입력 검증이 달라짐
 - 발표 화면 QR 클릭(또는 "📱 QR 크게" 버튼) → 전체 화면 QR
