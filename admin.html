@@ -25,21 +25,25 @@
       margin-top: 0.15rem; font-size: 0.83rem; color: var(--muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    /* 예시를 넣었는지 목록에서 바로 보이게 (확인하려고 수정을 열지 않도록).
-       예시가 있는 카드에만 화살표가 나온다. 기본은 한 줄, 누르면 전문이 펼쳐진다 */
+    /* 예시는 접어 둔다. 예시가 있는 카드에만 원형 화살표가 나오고, 누르면 예시가 나타난다.
+       접힘에서 예시를 감추므로 길이와 무관하게 누른 결과가 눈에 보인다 */
     .session-hint {
-      display: flex; align-items: flex-start; gap: 0.3rem;
-      margin-top: 0.1rem; font-size: 0.78rem; color: #6e6e73; min-width: 0;
+      display: flex; align-items: center; gap: 0.45rem;
+      margin-top: 0.35rem; font-size: 0.8rem; color: #6e6e73; min-width: 0;
     }
     .dark .session-hint { color: #a1a1a6; }
-    .session-hint .hint-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .session-hint.open .hint-text { white-space: normal; overflow: visible; word-break: keep-all; line-height: 1.45; }
     .hint-toggle {
-      flex: none; background: none; border: 0; padding: 0; margin-top: 0.06rem;
-      color: inherit; cursor: pointer; line-height: 1;
+      flex: none; width: 26px; height: 26px; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: none; border: 1px solid var(--border); border-radius: 50%;
+      color: var(--accent); cursor: pointer;
     }
-    .hint-toggle .icon { width: 0.95rem; height: 0.95rem; transition: transform 0.15s ease; }
+    .hint-toggle:hover { background: var(--accent-soft); border-color: var(--accent); }
+    .hint-toggle .icon { width: 15px; height: 15px; transition: transform 0.15s ease; }
     .session-hint.open .hint-toggle .icon { transform: rotate(180deg); }
+    .session-hint .hint-text { display: none; min-width: 0; word-break: keep-all; line-height: 1.45; }
+    .session-hint.open .hint-label { display: none; }
+    .session-hint.open .hint-text { display: block; }
     .session-code-badge {
       grid-area: badge; align-self: center;
       font-weight: 600; letter-spacing: 0.15em; color: var(--accent);
@@ -299,7 +303,7 @@
       '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" ' +
       'stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
 
-    // 예시가 있는 카드에만 예시 줄과 화살표를 붙인다. 기본은 한 줄, 누르면 전문
+    // 예시가 있는 카드에만 원형 화살표를 붙인다. 접힘은 "예시" 한 마디, 누르면 전문
     function appendHint(info, raw) {
       const hint = splitQuestion(raw).hint;
       if (!hint) return;
@@ -309,9 +313,14 @@
       const toggle = document.createElement("button");
       toggle.type = "button";
       toggle.className = "hint-toggle";
-      toggle.title = "예시 전체 보기";
+      toggle.title = "예시 보기";
+      toggle.setAttribute("aria-label", "예시 보기");
       toggle.setAttribute("aria-expanded", "false");
       toggle.innerHTML = ICON_CHEVRON;
+
+      const label = document.createElement("span");
+      label.className = "hint-label";
+      label.textContent = "예시";
 
       const text = document.createElement("span");
       text.className = "hint-text";
@@ -319,11 +328,14 @@
 
       toggle.addEventListener("click", () => {
         const open = row.classList.toggle("open");
+        const word = open ? "예시 접기" : "예시 보기";
         toggle.setAttribute("aria-expanded", open ? "true" : "false");
-        toggle.title = open ? "예시 접기" : "예시 전체 보기";
+        toggle.setAttribute("aria-label", word);
+        toggle.title = word;
       });
 
       row.appendChild(toggle);
+      row.appendChild(label);
       row.appendChild(text);
       info.appendChild(row);
     }
