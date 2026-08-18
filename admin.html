@@ -25,6 +25,21 @@
       margin-top: 0.15rem; font-size: 0.83rem; color: var(--muted);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    /* 예시를 넣었는지 목록에서 바로 보이게 (확인하려고 수정을 열지 않도록).
+       예시가 있는 카드에만 화살표가 나온다. 기본은 한 줄, 누르면 전문이 펼쳐진다 */
+    .session-hint {
+      display: flex; align-items: flex-start; gap: 0.3rem;
+      margin-top: 0.1rem; font-size: 0.78rem; color: #6e6e73; min-width: 0;
+    }
+    .dark .session-hint { color: #a1a1a6; }
+    .session-hint .hint-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-hint.open .hint-text { white-space: normal; overflow: visible; word-break: keep-all; line-height: 1.45; }
+    .hint-toggle {
+      flex: none; background: none; border: 0; padding: 0; margin-top: 0.06rem;
+      color: inherit; cursor: pointer; line-height: 1;
+    }
+    .hint-toggle .icon { width: 0.95rem; height: 0.95rem; transition: transform 0.15s ease; }
+    .session-hint.open .hint-toggle .icon { transform: rotate(180deg); }
     .session-code-badge {
       grid-area: badge; align-self: center;
       font-weight: 600; letter-spacing: 0.15em; color: var(--accent);
@@ -280,6 +295,40 @@
       return arr.sort(byNew);
     }
 
+    const ICON_CHEVRON =
+      '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" ' +
+      'stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+    // 예시가 있는 카드에만 예시 줄과 화살표를 붙인다. 기본은 한 줄, 누르면 전문
+    function appendHint(info, raw) {
+      const hint = splitQuestion(raw).hint;
+      if (!hint) return;
+      const row = document.createElement("div");
+      row.className = "session-hint";
+
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "hint-toggle";
+      toggle.title = "예시 전체 보기";
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.innerHTML = ICON_CHEVRON;
+
+      const text = document.createElement("span");
+      text.className = "hint-text";
+      text.textContent = hint;
+
+      toggle.addEventListener("click", () => {
+        const open = row.classList.toggle("open");
+        toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        toggle.title = open ? "예시 접기" : "예시 전체 보기";
+      });
+
+      row.appendChild(toggle);
+      row.appendChild(text);
+      info.appendChild(row);
+    }
+
+
     function renderSessionList() {
       const listEl = document.getElementById("sessionList");
       const sessions = sortSessions(mySessions);
@@ -302,6 +351,7 @@
         q.textContent = `${formatDate(s.created)} · ${splitQuestion(s.q).main}`;
         info.appendChild(name);
         info.appendChild(q);
+        appendHint(info, s.q);
 
         const badge = document.createElement("span");
         badge.className = "session-code-badge";
@@ -430,6 +480,7 @@
         sub.textContent = `${formatDate(s.created)} · 단어 ${s.entryCount}개 · ${splitQuestion(s.q).main}`;
         info.appendChild(name);
         info.appendChild(sub);
+        appendHint(info, s.q);
 
         const badge = document.createElement("span");
         badge.className = "session-code-badge";
