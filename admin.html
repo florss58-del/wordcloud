@@ -97,11 +97,11 @@
         <div class="field" style="margin-bottom:0.9rem">
           <label for="sortMode">정렬</label>
           <select id="sortMode" class="select">
+            <option value="name">이름 순 (교시 · Q번호)</option>
             <option value="new">최신 순 (만든 시각)</option>
-            <option value="name">이름 순</option>
-            <option value="q">질문 순</option>
+            <option value="q">질문 순 (같은 질문끼리)</option>
           </select>
-          <p class="form-hint">같은 질문을 쓰는 세션을 나란히 보려면 질문 순, 교시 순서로 보려면 이름 순</p>
+          <p class="form-hint">Q번호는 이름 어디에 있어도 번호 순으로 놓입니다</p>
         </div>
         <div id="sessionList" class="session-list"></div>
         <p id="listHint" class="form-hint" style="margin-top:0.8rem">
@@ -243,11 +243,24 @@
     /* ── 목록 정렬 ──
        같은 질문(5교시·6교시)을 나란히 보려면 만든 시각 순으로는 흩어진다 */
     const SORT_KEY = "wc_admin_sort";
-    let sortMode = localStorage.getItem(SORT_KEY) || "new";
+    let sortMode = localStorage.getItem(SORT_KEY) || "name";
+
+    // 이름에서 Q번호를 뽑는다. 이름 어디에 있어도(…_Q1_현화중 / …_현화중_Q3_작품링크) 번호 순으로 본다
+    function questionNo(name) {
+      const m = /[Qq](\d{1,2})(?!\d)/.exec(name || "");
+      return m ? Number(m[1]) : 0;
+    }
+    // Q번호와 구분 기호를 뺀 나머지. 한글이 영문보다 앞서는 정렬 때문에 기호 위치에 순서가 흔들리는 것을 막는다
+    function nameKey(name) {
+      return (name || "").replace(/[Qq]\d{1,2}(?!\d)/g, "").replace(/[_\-\s.]+/g, "");
+    }
 
     function sortSessions(list) {
       const byNew = (a, b) => (b.created || 0) - (a.created || 0);
-      const byName = (a, b) => (a.name || "").localeCompare(b.name || "", "ko");
+      const byName = (a, b) =>
+        nameKey(a.name).localeCompare(nameKey(b.name), "ko") ||
+        questionNo(a.name) - questionNo(b.name) ||
+        (a.name || "").localeCompare(b.name || "", "ko");
       const arr = [...list];
       if (sortMode === "name") return arr.sort((a, b) => byName(a, b) || byNew(a, b));
       if (sortMode === "q") {
