@@ -250,14 +250,16 @@ body.present-page.dark { background: #1d1d1f; }
   background: #fff; padding: clamp(10px, 1.6vh, 18px); border-radius: 18px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18); max-width: 90vw;
 }
-/* qrcode.js는 캔버스로 그린 뒤 이미지로 바꿔치기한다. 이미지가 해독되기 전에는 높이가 0이라
-   상자가 납작해지고 아래 내용이 밀린다 → 자리를 픽셀로 미리 잡아 둔다 (--qr-size는 JS가 넣는다) */
-#qrBox canvas, #qrBox img,
-.qr-focus-box canvas, .qr-focus-box img {
-  display: block;
+/* qrcode.js는 캔버스로 그린 뒤 <img>로 바꿔치기한다. 두 가지 문제가 있어 캔버스만 쓴다.
+   ① 이미지가 해독되기 전에는 높이가 0이라 상자가 납작해지고 아래 내용이 밀린다
+   ② 브라우저 확장(어도비 계열 등)이 <img>에 마우스를 올릴 때 배지를 붙이며 화면을 밀어 버린다
+   인라인 style을 이기려면 !important가 필요하다. 자리 크기(--qr-size)는 JS가 넣는다 */
+#qrBox canvas, .qr-focus-box canvas {
+  display: block !important;
   width: var(--qr-size, auto);
   height: var(--qr-size, auto);
 }
+#qrBox img, .qr-focus-box img { display: none !important; }
 .qr-focus-code {
   font-size: clamp(2.4rem, 8vh, 6rem); font-weight: 600; letter-spacing: 0.3em; color: var(--accent);
 }
