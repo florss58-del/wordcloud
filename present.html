@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>발표 화면 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=13" />
+  <link rel="stylesheet" href="./css/style.css?v=14" />
 </head>
 <body class="present-page auth-pending">
   <div class="present-wrap">
@@ -287,15 +287,33 @@
     const qrFocus = document.getElementById("qrFocus");
     let bigQrSize = 0;
 
-    // 질문·예시·코드·안내문이 함께 들어가야 한다. 세로가 기준이다
+    /* 질문·예시·코드·안내문을 뺀 「남은 높이」에서 QR 크기를 잡는다.
+       화면을 넘기면 스크롤이 생기고, 스크롤바가 나타날 때 내용이 밀려 어색해진다.
+       ⚠️ 재려면 오버레이가 보이는 상태여야 한다(hidden이면 높이가 0으로 나온다) */
     function qrFocusSize() {
-      return Math.max(180, Math.min(460, Math.floor(Math.min(window.innerWidth * 0.8, window.innerHeight * 0.44))));
+      const overlay = document.getElementById("qrFocus");
+      const box = document.getElementById("qrBoxBig");
+      const px = (v) => parseFloat(v) || 0;
+      const ov = getComputedStyle(overlay);
+      let used = px(ov.paddingTop) + px(ov.paddingBottom) + px(ov.rowGap) * 4;
+      [".qr-focus-title", ".qr-focus-code", ".qr-focus-hint", ".qr-focus-close-hint"].forEach((sel) => {
+        const el = overlay.querySelector(sel);
+        if (el) used += el.getBoundingClientRect().height;
+      });
+      const boxStyle = getComputedStyle(box);
+      // 여백 없이 꽉 채우면 답답하다. 위아래로 숨 쉴 틈을 남긴다
+      used += px(boxStyle.paddingTop) + px(boxStyle.paddingBottom) + 56;
+      return Math.max(150, Math.min(460, Math.floor(Math.min(window.innerWidth * 0.8, window.innerHeight - used))));
     }
 
     function openQrFocus() {
+      renderQuestion(document.getElementById("qrFocusQuestion"), questionRaw);
+      document.getElementById("qrFocusCode").textContent = code;
+      qrFocus.classList.remove("hidden");   // 재기 전에 보여야 한다
+
       const size = qrFocusSize();
-      // 한 번 그려 두면 창 크기가 바뀐 뒤 화면에 안 맞는다 → 차이가 크면 다시 그린다
-      if (Math.abs(size - bigQrSize) > 24) {
+      // 한 번 그려 두면 창 크기·질문 길이가 달라진 뒤 화면에 안 맞는다 → 차이가 크면 다시 그린다
+      if (Math.abs(size - bigQrSize) > 16) {
         const box = document.getElementById("qrBoxBig");
         box.innerHTML = "";
         new QRCode(box, {
@@ -306,9 +324,6 @@
         });
         bigQrSize = size;
       }
-      renderQuestion(document.getElementById("qrFocusQuestion"), questionRaw);
-      document.getElementById("qrFocusCode").textContent = code;
-      qrFocus.classList.remove("hidden");
     }
 
     document.getElementById("qrBigBtn").addEventListener("click", openQrFocus);

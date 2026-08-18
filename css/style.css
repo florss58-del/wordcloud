@@ -227,8 +227,11 @@ body.present-page.dark { background: #1d1d1f; }
   background: rgba(255, 255, 255, 0.97); cursor: pointer; text-align: center;
   padding: clamp(0.75rem, 2vh, 1.5rem) 1rem;
   overflow-y: auto; /* 질문이 두 줄이면 화면을 넘친다. justify-content:center는 넘칠 때 위가 잘린다 */
+  /* 스크롤바가 나타날 때 내용이 밀려 어색하다. QR 크기를 남은 높이에서 잡으므로 평소엔 스크롤이 없다 */
+  scrollbar-width: none;
 }
 /* 여유가 있으면 가운데, 넘치면 위에서부터 (auto 여백은 남는 공간이 없으면 0이 된다) */
+.qr-focus::-webkit-scrollbar { width: 0; height: 0; }
 .qr-focus > :first-child { margin-top: auto; }
 .qr-focus > :last-child { margin-bottom: auto; }
 .dark .qr-focus { background: rgba(29, 29, 31, 0.97); color: #f5f5f7; }
