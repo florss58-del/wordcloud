@@ -66,3 +66,32 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+
+/* ── 질문 + 예시 ──
+   보안 규칙의 q(80자) 하나에 "질문\n예시"로 함께 담는다.
+   나누는 것은 화면에서만 한다. */
+function splitQuestion(raw) {
+  const text = typeof raw === "string" ? raw : "";
+  const nl = text.indexOf("\n");
+  if (nl === -1) return { main: text.trim(), hint: "" };
+  return { main: text.slice(0, nl).trim(), hint: text.slice(nl + 1).trim() };
+}
+
+function joinQuestion(main, hint) {
+  const m = (main || "").trim();
+  const h = (hint || "").trim();
+  return h ? m + "\n" + h : m;
+}
+
+// 질문을 두 줄로 그린다. 예시가 없으면 한 줄 그대로.
+function renderQuestion(el, raw) {
+  const parts = splitQuestion(raw);
+  el.textContent = parts.main;
+  if (parts.hint) {
+    const hintEl = document.createElement("span");
+    hintEl.className = "question-hint";
+    hintEl.textContent = parts.hint;
+    el.appendChild(hintEl);
+  }
+  return parts;
+}

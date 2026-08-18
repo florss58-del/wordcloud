@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>발표 화면 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=11" />
+  <link rel="stylesheet" href="./css/style.css?v=12" />
 </head>
 <body class="present-page auth-pending">
   <div class="present-wrap">
@@ -93,6 +93,9 @@
 
     const canvas = document.getElementById("cloudCanvas");
     const questionEl = document.getElementById("question");
+    // 질문 원본("질문\n예시"). 줄바꿈을 쓸 수 없는 곳(PNG·문서 제목·결과 표)은 앞줄만 쓴다
+    let questionRaw = "";
+    const questionMain = () => splitQuestion(questionRaw).main;
     const participantCountEl = document.getElementById("participantCount");
     const entryCountEl = document.getElementById("entryCount");
     const latestWordEl = document.getElementById("latestWord");
@@ -295,7 +298,7 @@
         });
         bigQrRendered = true;
       }
-      document.getElementById("qrFocusQuestion").textContent = questionEl.textContent;
+      renderQuestion(document.getElementById("qrFocusQuestion"), questionRaw);
       document.getElementById("qrFocusCode").textContent = code;
       qrFocus.classList.remove("hidden");
     }
@@ -324,7 +327,7 @@
       ctx.fillRect(0, 0, out.width, out.height);
 
       // 질문 (폭에 맞게 글자 크기 자동 축소)
-      const question = questionEl.textContent;
+      const question = questionMain();
       const fontStack = '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif';
       let fontSize = Math.round(30 * dpr);
       ctx.textBaseline = "top";
@@ -370,7 +373,7 @@
 
     function renderResults() {
       const rows = resultRows();
-      document.getElementById("resultsTitle").textContent = questionEl.textContent;
+      document.getElementById("resultsTitle").textContent = questionMain();
       document.getElementById("resultsSub").textContent =
         `${todayStamp().dot} · 코드 ${code} · 참여 ${state.clients.size}명 · 제출 ${state.totalEntries}개 · 단어 종류 ${rows.length}개`;
 
@@ -537,8 +540,8 @@
       sessionRef(db, code).child("meta").child("q").on("value", (qSnap) => {
         const q = qSnap.val();
         if (typeof q === "string" && q.length) {
-          questionEl.textContent = q;
-          document.title = q + " - 실시간 워드클라우드";
+          questionRaw = q;
+          document.title = renderQuestion(questionEl, q).main + " - 실시간 워드클라우드";
         }
       });
 

@@ -128,6 +128,21 @@ h1 .title-icon, h2 .title-icon { color: var(--accent); }
   padding: 0.5rem 0 1rem;
   letter-spacing: -0.02em;
 }
+/* 질문 아래 예시 줄 (질문 값에 줄바꿈으로 함께 담긴다) */
+.question-hint {
+  display: block;
+  margin-top: 0.35em;
+  font-size: 0.6em;
+  font-weight: 500;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  /* 학생이 실제로 읽는 글이라 --muted(3.62:1)로는 대비가 모자란다 → 5.07:1 */
+  color: #6e6e73;
+  word-break: keep-all; /* 좁은 화면에서 낱말이 꺾이지 않게 */
+}
+.dark .question-hint { color: #a1a1a6; }
+.join-question .question-hint { font-size: 0.7em; }
+
 .join-remain { text-align: center; color: var(--muted); font-size: 0.92rem; font-weight: 500; margin-bottom: 1rem; }
 .submitted-words { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 1.2rem; }
 .submitted-words .chip {
