@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>세션 만들기 (강사용) - 실시간 워드클라우드</title>
   <meta name="robots" content="noindex" />
-  <link rel="stylesheet" href="./css/style.css?v=20" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="stylesheet" href="./css/style.css?v=21" />
   <style>
     .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
     /* 위: 코드 배지 + 이름·질문 / 아래: 버튼 — 이름이 버튼에 밀려 잘리지 않도록 */
@@ -372,6 +373,43 @@
     }
 
 
+    /* ── 세션 상태 표시 (진행 중 · 종료 · 시작 전) ──
+       상태는 내 목록(instructors/…)이 아니라 세션 쪽에 있다: 발표 화면의 “세션 종료”(closed)와
+       참여 시간(meta.open · meta.close). 목록을 그릴 때마다 읽어 오고, 읽기 전에는 지난번 값을 먼저 보여 준다 */
+    const statusCache = new Map();   // 코드 → {gone, closed, open, close}
+
+    function statusLabel(st) {
+      if (st.gone) return { text: "삭제됨", cls: "is-gone", title: "세션이 지워져 열 수 없습니다" };
+      if (st.closed) return { text: "종료", cls: "is-closed", title: "발표 화면에서 세션을 종료했습니다" };
+      const state = windowStateOf(st.open, st.close, Date.now());
+      if (state === "before") return { text: "시작 전", cls: "is-before", title: formatWhen(st.open) + "부터 참여할 수 있습니다" };
+      if (state === "after") return { text: "종료", cls: "is-closed", title: formatWhen(st.close) + "에 참여 시간이 끝났습니다" };
+      return { text: "진행 중", cls: "is-open", title: st.close ? formatWhen(st.close) + "까지 참여할 수 있습니다" : "지금 참여할 수 있습니다" };
+    }
+
+    function paintStatusChip(chip, st) {
+      const label = statusLabel(st);
+      chip.textContent = label.text;
+      chip.title = label.title;
+      chip.className = "session-status " + label.cls;
+    }
+
+    function makeStatusChip(code) {
+      const chip = document.createElement("span");
+      chip.className = "session-status hidden";
+      if (statusCache.has(code)) paintStatusChip(chip, statusCache.get(code));
+      const ref = sessionRef(db, code);
+      Promise.all([ref.child("meta").get(), ref.child("closed").get()]).then(([metaSnap, closedSnap]) => {
+        const m = metaSnap.val();
+        const st = m
+          ? { gone: false, closed: closedSnap.val() === true, open: Number(m.open) || null, close: Number(m.close) || null }
+          : { gone: true };
+        statusCache.set(code, st);
+        paintStatusChip(chip, st);
+      }).catch(() => {});   // 못 읽으면 표시를 비워 둔다 (틀린 상태를 보여 주는 것보다 낫다)
+      return chip;
+    }
+
     function renderSessionList() {
       const listEl = document.getElementById("sessionList");
       const sessions = sortSessions(mySessions);
@@ -392,6 +430,7 @@
         const q = document.createElement("div");
         q.className = "session-q";
         q.textContent = `${formatDate(s.created)} · ${splitQuestion(s.q).main}`;
+        name.appendChild(makeStatusChip(s.code));   // 진행 중 · 종료 · 시작 전
         info.appendChild(name);
         info.appendChild(q);
         appendHint(info, s.q);

@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>단어 제출 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=20" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="stylesheet" href="./css/style.css?v=21" />
 </head>
 <body>
   <div class="page-title">
@@ -265,6 +266,7 @@
         document.querySelector(".page-title h1").lastChild.nodeValue = " 참석 확인";
         maxPerUser = 1;
         nickField.classList.remove("hidden");
+        nickInput.placeholder = "이름만 적어 주세요 (예: 홍길동)";
         document.getElementById("wordField").classList.add("hidden");
         submitBtn.classList.add("hidden");
         rsvpBtns.classList.remove("hidden");
@@ -388,7 +390,10 @@
         nickInput.focus();
         return;
       }
-      const nick = checked.word;
+      // 이름은 글자만 남긴다 — 띄어쓰기·기호·점·숫자를 모두 뺀다 ("김 은아."와 "김은아"가 다른 사람처럼 보이지 않게).
+      // 입력 도중에 지우면 한글 조합이 깨지므로 누르는 순간에 정리한다
+      const nick = checked.word.replace(/[^가-힣a-zA-Z]/g, "");
+      nickInput.value = nick;
       if (nick.length < 2) { setStatus("이름을 두 글자 이상 적어 주세요.", "error"); nickInput.focus(); return; }
       if (nick.length > 12) { setStatus("이름은 12자까지예요.", "error"); return; }
 

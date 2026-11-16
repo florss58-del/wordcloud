@@ -589,3 +589,16 @@ body.dark .rsvp-head .rsvp-unit { color: #a1a1a6; }
 .dark .window-badge { background: #16365c; color: #cfe4ff; }
 .dark .window-badge[data-state="before"] { background: #3a3a3c; color: #e5e5ea; }
 .dark .window-badge[data-state="after"] { background: #5c1f1a; color: #ffd9d4; }
+
+/* 완료·시간 안내 문장이 낱말 중간에서 꺾이지 않게 ("마감되었습 / 니다") */
+.join-done p, .join-remain, .rsvp-count { word-break: keep-all; text-wrap: balance; }
+
+/* 세션 목록의 상태 표시 (admin) — 이름 옆 알약. 진행 중은 초록, 종료는 회색, 시작 전은 파랑 */
+.session-status {
+  display: inline-block; margin-left: 0.55rem; padding: 0.18em 0.7em; border-radius: 999px;
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0; vertical-align: 0.12em; white-space: nowrap;
+}
+.session-status.is-open { background: #e3f4e8; color: #14622b; }
+.session-status.is-closed { background: #ececee; color: #48484d; }
+.session-status.is-before { background: #e8f1fb; color: #00408a; }
+.session-status.is-gone { background: #fdecea; color: #a1241a; }
