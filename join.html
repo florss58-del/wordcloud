@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>단어 제출 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=19" />
+  <link rel="stylesheet" href="./css/style.css?v=20" />
 </head>
 <body>
   <div class="page-title">
@@ -14,8 +14,8 @@
   <main>
     <div class="container">
       <div class="card">
-        <div id="sessionInfo" class="join-info hidden"></div>
         <p id="question" class="join-question">질문을 불러오는 중...</p>
+        <div id="sessionInfo" class="join-info hidden"></div>
         <p id="remain" class="join-remain"></p>
 
         <div id="inputArea">
@@ -216,7 +216,35 @@
       sessionRef(db, code).child("meta").child("info").on("value", (infoSnap) => {
         const info = infoSnap.val();
         const has = typeof info === "string" && info.trim().length > 0;
-        infoEl.textContent = has ? info.trim() : "";
+        infoEl.textContent = "";
+        if (has) {
+          // 줄마다 나눠 그린다. 머리표가 있는 줄은 머리표와 글을 따로 놓아 꺾여도 가지런하게
+          info.replace(/\s+$/, "").split(String.fromCharCode(10)).forEach((raw) => {
+            const row = document.createElement("div");
+            const body = raw.trim();
+            if (!body) { row.className = "join-info-gap"; infoEl.appendChild(row); return; }
+            const indented = /^\s+/.test(raw);
+            const m = body.match(/^(■|□|▶|●|※|-|·|•|\d+회차|\d+[.)])\s+(.*)$/);
+            row.className = "join-info-line";
+            if (m) {
+              const mark = document.createElement("span");
+              mark.className = "join-info-mark";
+              mark.textContent = m[1];
+              const text = document.createElement("span");
+              text.textContent = m[2];
+              row.appendChild(mark);
+              row.appendChild(text);
+              if (/^[■□▶●]$/.test(m[1])) row.classList.add("is-head");
+              else if (/^\d/.test(m[1])) row.classList.add("is-step");
+            } else {
+              const text = document.createElement("span");
+              text.textContent = body;
+              row.appendChild(text);
+            }
+            if (indented) row.classList.add("is-sub");
+            infoEl.appendChild(row);
+          });
+        }
         infoEl.classList.toggle("hidden", !has);
       });
 

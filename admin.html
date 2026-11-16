@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>세션 만들기 (강사용) - 실시간 워드클라우드</title>
   <meta name="robots" content="noindex" />
-  <link rel="stylesheet" href="./css/style.css?v=19" />
+  <link rel="stylesheet" href="./css/style.css?v=20" />
   <style>
     .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
     /* 위: 코드 배지 + 이름·질문 / 아래: 버튼 — 이름이 버튼에 밀려 잘리지 않도록 */
@@ -775,6 +775,11 @@
     // 버튼 이름 칸은 참석 확인 형식을 골랐을 때만 보인다
     document.getElementById("inputMode").addEventListener("change", (e) => {
       document.getElementById("rsvpLabelRow").classList.toggle("hidden", e.target.value !== "rsvp");
+      // 참석 확인·작품 링크는 1인 1개로 고정된다. 3개로 보이면 헷갈리므로 칸을 1개로 바꾸고 잠근다
+      const maxEl = document.getElementById("maxPerUser");
+      const fixed = e.target.value === "rsvp" || e.target.value === "link";
+      if (fixed) maxEl.value = "1";
+      maxEl.disabled = fixed;
     });
 
     /* ── 세션 만들기 ── */

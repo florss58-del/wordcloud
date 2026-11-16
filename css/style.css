@@ -557,10 +557,25 @@ body.dark .rsvp-head .rsvp-unit { color: #a1a1a6; }
 
 /* 안내문 (join.html) — 강사가 적은 일시·장소·준비물·회차별 내용. 줄바꿈을 그대로 살린다 */
 .join-info {
-  margin-bottom: 1.3rem; padding: 1rem 1.1rem;
+  margin: 0 0 1.3rem; padding: 1rem 1.1rem;
   background: #f5f5f7; border-radius: 14px;
-  font-size: 0.95rem; line-height: 1.65; color: #1d1d1f;
-  text-align: left; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere;
+  font-size: 0.95rem; line-height: 1.6; color: #1d1d1f;
+  text-align: left; word-break: keep-all; overflow-wrap: anywhere;
+}
+/* 한 줄씩 따로 놓는다. 머리표(■ · - · 1회차)는 왼쪽에 세우고 글은 그 옆에서 꺾여,
+   좁은 휴대폰에서 줄이 넘어가도 둘째 줄이 머리표 밑으로 파고들지 않는다 */
+.join-info-line { display: flex; gap: 0.4em; }
+.join-info-line + .join-info-line { margin-top: 0.15em; }
+.join-info-mark { flex: 0 0 auto; white-space: nowrap; }
+.join-info-line.is-head { font-weight: 600; margin-top: 0.5em; }
+.join-info-line.is-head:first-child { margin-top: 0; }
+.join-info-line.is-sub { padding-left: 1.1em; color: #48484d; }
+.join-info-line.is-step .join-info-mark { font-weight: 600; color: #00408a; }
+.join-info-gap { height: 0.55em; }
+/* 질문이 두 줄로 꺾일 때 한 낱말만 아랫줄에 떨어지지 않게 */
+.join-question { text-wrap: balance; word-break: keep-all; }
+@media (max-width: 640px) {
+  .join-info { padding: 0.85rem 0.9rem; font-size: 0.9rem; }
 }
 
 /* 참여 시간 — 학생 화면의 마감 안내 한 줄, 발표 화면 머리말의 배지 */
