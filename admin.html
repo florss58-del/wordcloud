@@ -922,6 +922,29 @@
     /* ── 초기화 (강사 로그인 후 진입) ── */
     requireInstructor(async (user) => {
       document.getElementById("sessionName").value = todayPrefix();
+
+      // 미리 채우기 — 주소에 값을 실어 오면 만들기 폼을 채워 둔다 (?fill=1&name=…&q=…&info=…)
+      // 만들지는 않는다. 눈으로 확인하고 “세션 만들기”를 누르는 것은 사람 몫이다
+      const fillParams = new URLSearchParams(location.search);
+      if (fillParams.get("fill") === "1") {
+        const put = (id, key) => { const v = fillParams.get(key); if (v !== null) document.getElementById(id).value = v; };
+        put("sessionName", "name");
+        put("question", "q");
+        put("questionHint", "hint");
+        put("sessionInfo", "info");
+        put("openAt", "open");     // 2026-11-17T09:00 꼴
+        put("closeAt", "close");
+        put("yesLabel", "yes");
+        put("noLabel", "no");
+        const modeEl = document.getElementById("inputMode");
+        const mode = fillParams.get("mode");
+        if (mode && [...modeEl.options].some((o) => o.value === mode)) {
+          modeEl.value = mode;
+          modeEl.dispatchEvent(new Event("change"));
+        }
+        createStatus.textContent = "주소에 담긴 값으로 폼을 채웠습니다. 확인하고 “세션 만들기”를 눌러 주세요.";
+        createStatus.className = "status-msg";
+      }
       await initSessionList(user);
       // 발표 화면에서 세션을 종료하고 넘어온 경우 지난 세션 목록을 바로 펼쳐 준다
       if (new URLSearchParams(location.search).get("find") === "1") {
