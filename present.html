@@ -140,10 +140,18 @@
 
     function resizeCanvas() {
       const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.round(rect.width * dpr);
-      canvas.height = Math.round(rect.height * dpr);
+      const w = Math.round(rect.width * dpr);
+      const h = Math.round(rect.height * dpr);
+      // 크기가 그대로면 건드리지 않는다. 캔버스는 크기를 다시 넣기만 해도 그림이 지워진다
+      if (w === canvas.width && h === canvas.height) return;
+      canvas.width = w;
+      canvas.height = h;
       scheduleRender();
     }
+
+    // 창 크기뿐 아니라 질문이 두 줄이 되거나 툴바가 줄바꿈될 때도 캔버스 자리가 바뀐다.
+    // 그때 다시 재지 않으면 옛 크기로 그린 그림이 눌려 보인다
+    if (window.ResizeObserver) new ResizeObserver(resizeCanvas).observe(canvas);
 
     function scheduleRender() {
       if (state.paused) { state.dirty = true; return; }
@@ -187,10 +195,94 @@
       return `rgba(${r}, ${g}, ${b}, ${alpha.toFixed(2)})`;
     }
 
-    function renderCloud() {
+    /* ── 그리기 ──
+       단어를 하나도 빠뜨리지 않는 크기를 먼저 찾고(보이지 않는 연습용 캔버스), 그 크기로 한 번만 그린다.
+       예전에는 wordcloud2의 shrinkToFit에 맡겼는데, 최소 글자 크기와 부딪혀 끝없이 되풀이하다
+       그리기가 통째로 멈췄다(단어 25개쯤부터 뒤쪽 단어가 사라지고 화면이 흐린 채 남았다) */
+    const EDGE_MARGIN = 10;   // 화면 가장자리 여백(px)
+    const QR_GAP = 12;        // QR 상자 둘레 여백(px)
+    const MIN_FONT = 22;      // 이보다 작으면 교실 뒤에서 안 보인다(px)
+    let renderSeq = 0;
+
+    // 글자가 들어가면 안 되는 자리를 "배경과 한 끗 다른 색"으로 칠해 둔다.
+    // wordcloud2는 clearCanvas:false일 때 배경색이 아닌 칸을 찬 자리로 보고 피한다. 눈에는 구별되지 않는다
+    function paintBlocked(target) {
+      const ctx = target.getContext("2d");
+      const W = target.width, H = target.height;
+      ctx.fillStyle = state.dark ? "#1d1d1f" : "#ffffff";
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = state.dark ? "#1d1d1e" : "#fffffe";
+
+      const m = Math.round(EDGE_MARGIN * dpr);
+      ctx.fillRect(0, 0, W, m);
+      ctx.fillRect(0, H - m, W, m);
+      ctx.fillRect(0, 0, m, H);
+      ctx.fillRect(W - m, 0, m, H);
+
+      // QR 상자가 보이면 그 자리도 비운다 (글자가 상자 밑에 깔려 가려졌다)
+      const panel = document.getElementById("sidePanel");
+      const cr = canvas.getBoundingClientRect();
+      if (panel && !panel.classList.contains("hidden") && cr.width && cr.height) {
+        const pr = panel.getBoundingClientRect();
+        const sx = W / cr.width, sy = H / cr.height;
+        const x0 = Math.max(0, Math.floor((pr.left - cr.left - QR_GAP) * sx));
+        const y0 = Math.max(0, Math.floor((pr.top - cr.top - QR_GAP) * sy));
+        const x1 = Math.min(W, Math.ceil((pr.right - cr.left + QR_GAP) * sx));
+        const y1 = Math.min(H, Math.ceil((pr.bottom - cr.top + QR_GAP) * sy));
+        if (x1 > x0 && y1 > y0) ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+      }
+    }
+
+    function cloudOptions(list, scale, tight) {
+      const maxCount = list[0][1];
+      const base = Math.min(canvas.width, canvas.height);
+      // 단어가 적으면 크게, 많으면 작게
+      const density = Math.max(0.8, Math.min(2.4, 14 / Math.sqrt(list.length)));
+      const factor = (base / 6) * density / Math.sqrt(maxCount) * scale;
+      const minFont = MIN_FONT * dpr;
+      const grid = tight ? 8 * dpr : Math.max(8 * dpr, (base / 35) * Math.sqrt(scale));
+      return {
+        list: list.map((item) => [item[0], item[1]]),
+        gridSize: Math.round(grid),   // 작은 단어가 큰 글자 속으로 파고들지 않게
+        // 가로로 넓은 화면에서 원형으로 뭉치지 않고 좌우까지 채우도록
+        ellipticity: canvas.height / canvas.width,
+        weightFactor: (count) => Math.max(minFont, Math.sqrt(count) * factor),
+        fontFamily: '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif',
+        fontWeight: 700,
+        color: (word, weight) => colorFor(word, weight, maxCount),
+        backgroundColor: state.dark ? "#1d1d1f" : "#ffffff",
+        clearCanvas: false,      // paintBlocked가 칠해 둔 자리를 피하게 한다
+        rotateRatio: 0,          // 전부 가로쓰기 — 한글은 세로로 돌면 읽기 어렵다
+        shuffle: false,          // 자리를 섞지 않는다 → 연습과 실제 그림의 배치가 같다
+        drawOutOfBound: false,
+        shrinkToFit: false,
+        // 모든 글자가 이미 최소 크기인가 (더 줄여도 달라지지 않는다)
+        atFloor: Math.sqrt(maxCount) * factor <= minFont
+      };
+    }
+
+    // 연습용 캔버스에 그려 보고 전부 들어가는지 알려 준다. 하나라도 안 들어가면 바로 멈춘다
+    function tryFit(options) {
+      return new Promise((resolve) => {
+        const probe = document.createElement("canvas");
+        probe.width = canvas.width;
+        probe.height = canvas.height;
+        paintBlocked(probe);
+        let failed = false;
+        probe.addEventListener("wordclouddrawn", (e) => {
+          if (!e.detail.drawn) { failed = true; e.preventDefault(); }
+        });
+        probe.addEventListener("wordcloudstop", () => resolve(!failed));
+        WordCloud(probe, options);
+      });
+    }
+
+    async function renderCloud() {
       state.dirty = false;
+      const seq = ++renderSeq;
       const list = visibleList();
       canvas.style.opacity = "1";
+      if (!canvas.width || !canvas.height) return;
       if (list.length === 0) {
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -201,30 +293,28 @@
         return;
       }
 
-      canvas.style.opacity = "0.45"; // 새 배치 렌더링 시 부드러운 전환
-      const maxCount = list[0][1];
-      // 화면 크기와 최대 빈도에 맞춰 글자 크기 계산 (단어가 적을수록 크게)
-      const base = Math.min(canvas.width, canvas.height);
-      // 단어가 적으면 크게, 많으면 작게 — 넘치면 wordcloud2의 shrinkToFit이 알아서 줄인다
-      const density = Math.max(0.8, Math.min(2.4, 14 / Math.sqrt(list.length)));
-      const factor = (base / 6) * density / Math.sqrt(maxCount);
+      // 1) 전체를 함께 줄여 가며 다 들어가는 크기를 찾는다 (단어끼리의 크기 비율은 그대로)
+      // 2) 최소 크기까지 줄여도 안 되면 간격을 좁힌다
+      // 3) 그래도 안 되면 적게 나온 단어부터 덜어낸다 (결과 보기·CSV에는 전부 남는다)
+      let shown = list, scale = 1, tight = false, options;
+      for (;;) {
+        options = cloudOptions(shown, scale, tight);
+        const fits = await tryFit(options);
+        if (seq !== renderSeq) return;   // 그사이 새 단어가 왔다. 새 그리기가 이어받는다
+        if (fits) break;
+        if (!options.atFloor) scale *= 0.85;
+        else if (!tight) tight = true;
+        else if (shown.length > 1) shown = shown.slice(0, Math.max(1, Math.floor(shown.length * 0.9)));
+        else break;
+      }
+      if (shown.length < list.length) {
+        console.warn(`화면에 다 담지 못해 ${list.length - shown.length}개를 덜어냈습니다. 결과 보기에는 전부 있습니다`);
+      }
 
-      WordCloud(canvas, {
-        list,
-        gridSize: Math.max(12, Math.round(base / 35)),   // 작은 단어가 큰 글자 속으로 파고들지 않게
-        // 가로로 넓은 화면에서 원형으로 뭉치지 않고 좌우까지 채우도록
-        ellipticity: canvas.height / canvas.width,
-        weightFactor: (count) => Math.max(22 * dpr, Math.sqrt(count) * factor),
-        fontFamily: '"Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif',
-        fontWeight: 700,
-        color: (word, weight) => colorFor(word, weight, maxCount),
-        backgroundColor: state.dark ? "#1d1d1f" : "#ffffff",
-        rotateRatio: 0,          // 전부 가로쓰기 — 한글은 세로로 돌면 읽기 어렵다
-        shuffle: false,
-        drawOutOfBound: false,
-        shrinkToFit: true,
-        click: (item) => openFocus(item[0], item[1])
-      });
+      canvas.style.opacity = "0.45"; // 새 배치 렌더링 시 부드러운 전환
+      paintBlocked(canvas);
+      options.click = (item) => openFocus(item[0], item[1]);
+      WordCloud(canvas, options);
     }
 
     function updateStats() {
@@ -339,6 +429,7 @@
       const panel = document.getElementById("sidePanel");
       const hidden = panel.classList.toggle("hidden");
       qrToggleBtn.innerHTML = hidden ? ICONS.eye + " QR 보이기" : ICONS.eyeOff + " QR 숨기기";
+      scheduleRender(); // QR 자리를 비우거나 다시 쓴다
     });
 
     // 질문·날짜가 함께 담긴 PNG로 저장
