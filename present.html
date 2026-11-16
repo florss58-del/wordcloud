@@ -4,13 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>발표 화면 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=18" />
+  <link rel="stylesheet" href="./css/style.css?v=19" />
 </head>
 <body class="present-page auth-pending">
   <div class="present-wrap">
     <header class="present-header">
       <h1 id="question" class="present-question">불러오는 중...</h1>
       <div class="present-stats">
+        <span id="windowBadge" class="window-badge hidden"></span>
         <span>참여 <strong id="participantCount">0</strong>명</span>
         <span>단어 <strong id="entryCount">0</strong>개</span>
       </div>
@@ -87,7 +88,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="./js/firebase-config.js"></script>
-  <script src="./js/common.js?v=18"></script>
+  <script src="./js/common.js?v=19"></script>
   <script src="./js/korean.js"></script>
   <script src="./js/auth.js"></script>
   <script>
@@ -639,6 +640,9 @@
     const rsvpBoardEl = document.getElementById("rsvpBoard");
     const roster = new Map();   // 항목 키 → {name, status, t}
     let rsvpMode = false;
+    // 칸 제목·알림·CSV에 쓰는 이름. 저장된 답은 늘 참석/불참이고 보이는 글자만 강사가 정한다
+    let labels = rsvpLabels();
+    const labelOf = (status) => (status === RSVP_YES ? labels.yes : labels.no);
 
     function rosterList(status) {
       return [...roster.values()].filter((r) => r.status === status).sort((a, b) => (a.t || 0) - (b.t || 0));
@@ -653,7 +657,7 @@
             ? items.map((r) => `<span class="rsvp-name">${escapeHtml(r.name)}</span>`).join("")
             : '<span class="rsvp-none">아직 없습니다</span>'}</div>
         </section>`;
-      rsvpBoardEl.innerHTML = col("참석", "is-yes", yes) + col("불참", "is-no", no);
+      rsvpBoardEl.innerHTML = col(escapeHtml(labels.yes), "is-yes", yes) + col(escapeHtml(labels.no), "is-no", no);
       participantCountEl.textContent = yes.length + no.length;   // 머리말에는 응답한 사람 수
     }
 
@@ -675,7 +679,7 @@
       };
       const rows = [...roster.values()].sort((a, b) => (a.t || 0) - (b.t || 0));
       const lines = [["번호", "이름", "응답", "응답 시각"].map(cell).join(",")];
-      rows.forEach((r, i) => lines.push([i + 1, r.name, r.status, stamp(r.t)].map(cell).join(",")));
+      rows.forEach((r, i) => lines.push([i + 1, r.name, labelOf(r.status), stamp(r.t)].map(cell).join(",")));
       const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -710,6 +714,28 @@
         renderGallery();
       }
 
+      // 참여 시간이 정해진 세션이면 머리말에 시간과 지금 상태를 보여 준다
+      const windowBadge = document.getElementById("windowBadge");
+      let openAt = Number(meta.open) || null, closeAt = Number(meta.close) || null, serverOffset = 0;
+      const shortWhen = (ms) => {
+        const d = new Date(ms);
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      };
+      const renderWindowBadge = () => {
+        if (!openAt && !closeAt) { windowBadge.classList.add("hidden"); return; }
+        const state = windowStateOf(openAt, closeAt, Date.now() + serverOffset);
+        const range = openAt && closeAt ? shortWhen(openAt) + " ~ " + shortWhen(closeAt)
+          : openAt ? shortWhen(openAt) + "부터" : shortWhen(closeAt) + "까지";
+        windowBadge.textContent = "참여 " + range + " · " + (state === "before" ? "시작 전" : state === "after" ? "마감" : "진행 중");
+        windowBadge.dataset.state = state;
+        windowBadge.classList.remove("hidden");
+      };
+      sessionRef(db, code).child("meta").child("open").on("value", (v) => { openAt = Number(v.val()) || null; renderWindowBadge(); });
+      sessionRef(db, code).child("meta").child("close").on("value", (v) => { closeAt = Number(v.val()) || null; renderWindowBadge(); });
+      db.ref(".info/serverTimeOffset").on("value", (v) => { serverOffset = Number(v.val()) || 0; renderWindowBadge(); });
+      setInterval(renderWindowBadge, 5000);
+
       rsvpMode = splitQuestion(meta.q).form === "rsvp";
       if (rsvpMode) {
         canvas.classList.add("hidden");
@@ -723,7 +749,11 @@
         document.body.classList.add("rsvp-page");
         participantCountEl.parentElement.firstChild.nodeValue = "응답 ";
         entryCountEl.parentElement.classList.add("hidden");
+        let metaYes = meta.yes, metaNo = meta.no;
+        labels = rsvpLabels(metaYes, metaNo);
         renderRoster();
+        sessionRef(db, code).child("meta").child("yes").on("value", (v) => { metaYes = v.val(); labels = rsvpLabels(metaYes, metaNo); renderRoster(); });
+        sessionRef(db, code).child("meta").child("no").on("value", (v) => { metaNo = v.val(); labels = rsvpLabels(metaYes, metaNo); renderRoster(); });
       }
 
       // 강사가 admin에서 주제를 수정하면 발표 화면에 즉시 반영
@@ -752,7 +782,7 @@
 
         if (rsvpMode) {
           const parsed = putRoster(child.key, entry);
-          if (parsed) latestWordEl.innerHTML = `방금 응답: <strong>${escapeHtml(parsed.name)}</strong> ${parsed.status}`;
+          if (parsed) latestWordEl.innerHTML = `방금 응답: <strong>${escapeHtml(parsed.name)}</strong> ${escapeHtml(labelOf(parsed.status))}`;
           return;
         }
 
@@ -781,7 +811,7 @@
           const entry = child.val();
           if (!entry || typeof entry.w !== "string") return;
           const parsed = putRoster(child.key, entry);
-          if (parsed) latestWordEl.innerHTML = `답을 바꿨어요: <strong>${escapeHtml(parsed.name)}</strong> ${parsed.status}`;
+          if (parsed) latestWordEl.innerHTML = `답을 바꿨어요: <strong>${escapeHtml(parsed.name)}</strong> ${escapeHtml(labelOf(parsed.status))}`;
         });
       }
 

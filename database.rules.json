@@ -39,6 +39,10 @@
           "mode": { ".validate": "newData.val() === 'word' || newData.val() === 'phrase' || newData.val() === 'link'" },
           "name": { ".write": "auth != null", ".validate": "newData.isString() && newData.val().length <= 40" },
           "info": { ".write": "auth != null", ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 1000" },
+          "yes": { ".write": "auth != null", ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12" },
+          "no": { ".write": "auth != null", ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 12" },
+          "open": { ".write": "auth != null", ".validate": "newData.isNumber()" },
+          "close": { ".write": "auth != null", ".validate": "newData.isNumber()" },
           "created": { ".validate": "newData.isNumber()" },
           "$other": { ".validate": false }
         },
@@ -46,7 +50,7 @@
         "entries": {
           ".write": "auth != null && !newData.exists()",
           "$entryId": {
-            ".write": "root.child('sessions').child($code).child('meta').exists() && root.child('sessions').child($code).child('closed').val() !== true && newData.exists() && (!data.exists() || data.child('c').val() === newData.child('c').val())",
+            ".write": "root.child('sessions').child($code).child('meta').exists() && root.child('sessions').child($code).child('closed').val() !== true && newData.exists() && (!data.exists() || data.child('c').val() === newData.child('c').val()) && (!root.child('sessions').child($code).child('meta').child('open').exists() || now >= root.child('sessions').child($code).child('meta').child('open').val()) && (!root.child('sessions').child($code).child('meta').child('close').exists() || now <= root.child('sessions').child($code).child('meta').child('close').val())",
             ".validate": "newData.hasChildren(['w', 'c', 't'])",
             "w": { ".validate": "newData.isString() && newData.val().length >= 1 && (root.child('sessions').child($code).child('meta').child('mode').val() === 'link' ? (newData.val().length <= 300 && newData.val().beginsWith('https://')) : newData.val().length <= 40)" },
             "n": { ".validate": "root.child('sessions').child($code).child('meta').child('mode').val() === 'link' && newData.isString() && newData.val().length >= 1 && newData.val().length <= 12" },

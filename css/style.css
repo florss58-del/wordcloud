@@ -562,3 +562,15 @@ body.dark .rsvp-head .rsvp-unit { color: #a1a1a6; }
   font-size: 0.95rem; line-height: 1.65; color: #1d1d1f;
   text-align: left; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere;
 }
+
+/* 참여 시간 — 학생 화면의 마감 안내 한 줄, 발표 화면 머리말의 배지 */
+.join-window { margin-top: 0.9rem; text-align: center; color: #6e6e73; font-size: 0.9rem; font-weight: 500; }
+.window-badge {
+  align-self: center; padding: 0.3em 0.8em; border-radius: 999px;
+  font-size: 0.9rem; font-weight: 600; background: #e8f1fb; color: #00408a;
+}
+.window-badge[data-state="before"] { background: #f0f0f2; color: #48484d; }
+.window-badge[data-state="after"] { background: #fdecea; color: #a1241a; }
+.dark .window-badge { background: #16365c; color: #cfe4ff; }
+.dark .window-badge[data-state="before"] { background: #3a3a3c; color: #e5e5ea; }
+.dark .window-badge[data-state="after"] { background: #5c1f1a; color: #ffd9d4; }

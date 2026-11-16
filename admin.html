@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>세션 만들기 (강사용) - 실시간 워드클라우드</title>
   <meta name="robots" content="noindex" />
-  <link rel="stylesheet" href="./css/style.css?v=18" />
+  <link rel="stylesheet" href="./css/style.css?v=19" />
   <style>
     .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
     /* 위: 코드 배지 + 이름·질문 / 아래: 버튼 — 이름이 버튼에 밀려 잘리지 않도록 */
@@ -94,6 +94,17 @@
         </div>
         <div class="option-row" style="display:flex;gap:0.8rem">
           <div class="field" style="flex:1">
+            <label for="openAt">참여 시작 (선택)</label>
+            <input id="openAt" class="input" type="datetime-local" />
+          </div>
+          <div class="field" style="flex:1">
+            <label for="closeAt">참여 마감 (선택)</label>
+            <input id="closeAt" class="input" type="datetime-local" />
+          </div>
+        </div>
+        <p class="form-hint" style="margin-top:-0.4rem;margin-bottom:1rem">비워 두면 언제든 참여할 수 있습니다 · 시간 밖에는 교육생 화면에 안내만 보이고 제출이 막힙니다</p>
+        <div class="option-row" style="display:flex;gap:0.8rem">
+          <div class="field" style="flex:1">
             <label for="inputMode">입력 형식</label>
             <select id="inputMode" class="select">
               <option value="word" selected>단어 (조사 정리·집계, 12자)</option>
@@ -111,6 +122,19 @@
               <option value="5">5개</option>
             </select>
           </div>
+        </div>
+        <div id="rsvpLabelRow" class="hidden">
+          <div class="option-row" style="display:flex;gap:0.8rem">
+            <div class="field" style="flex:1">
+              <label for="yesLabel">첫째 버튼 이름</label>
+              <input id="yesLabel" class="input" maxlength="12" placeholder="참석" />
+            </div>
+            <div class="field" style="flex:1">
+              <label for="noLabel">둘째 버튼 이름</label>
+              <input id="noLabel" class="input" maxlength="12" placeholder="불참" />
+            </div>
+          </div>
+          <p class="form-hint" style="margin-top:-0.4rem;margin-bottom:1rem">비워 두면 “참석”·“불참”으로 보입니다 · 12자까지 (예: 참석합니다 / 다음 기회에)</p>
         </div>
         <button id="createBtn" class="btn btn-primary btn-block">세션 만들기</button>
         <p id="createStatus" class="status-msg"></p>
@@ -164,7 +188,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="./js/firebase-config.js"></script>
-  <script src="./js/common.js?v=18"></script>
+  <script src="./js/common.js?v=19"></script>
   <script src="./js/auth.js"></script>
   <script>
     const db = initFirebase();
@@ -578,11 +602,51 @@
       infoInput.placeholder = "안내문을 불러오는 중...";
       infoInput.disabled = true;
       let infoLoaded = null;   // 불러온 값. null이면 아직 못 읽었다
-      sessionRef(db, s.code).child("meta").child("info").get().then((infoSnap) => {
-        infoLoaded = typeof infoSnap.val() === "string" ? infoSnap.val() : "";
+      // 참여 시간(시작·마감)도 세션 쪽에만 있다
+      const makeWhen = (labelText) => {
+        const wrap = document.createElement("label");
+        wrap.className = "form-hint";
+        wrap.style.cssText = "margin:0;display:flex;align-items:center;gap:0.6rem";
+        const span = document.createElement("span");
+        span.textContent = labelText;
+        span.style.flex = "0 0 auto";
+        const input = document.createElement("input");
+        input.className = "input";
+        input.type = "datetime-local";
+        input.disabled = true;
+        wrap.appendChild(span);
+        wrap.appendChild(input);
+        return { wrap, input };
+      };
+      const openField = makeWhen("참여 시작");
+      const closeField = makeWhen("참여 마감");
+      let whenLoaded = null;   // {open, close} 불러온 값
+      // 참석 확인 세션이면 버튼 이름도 고칠 수 있다
+      const yesField = makeWhen("첫째 버튼");
+      const noField = makeWhen("둘째 버튼");
+      [yesField, noField].forEach((f, i) => {
+        f.input.type = "text";
+        f.input.maxLength = 12;
+        f.input.placeholder = i === 0 ? "참석" : "불참";
+      });
+      let labelLoaded = null;  // {yes, no} 불러온 값
+
+      sessionRef(db, s.code).child("meta").get().then((metaSnap) => {
+        const m = metaSnap.val() || {};
+        infoLoaded = typeof m.info === "string" ? m.info : "";
         infoInput.value = infoLoaded;
         infoInput.placeholder = "안내문 (선택 · 교육생 화면 맨 위에 그대로 보입니다)";
         infoInput.disabled = false;
+        whenLoaded = { open: Number(m.open) || null, close: Number(m.close) || null };
+        openField.input.value = msToLocalInput(whenLoaded.open);
+        closeField.input.value = msToLocalInput(whenLoaded.close);
+        openField.input.disabled = false;
+        closeField.input.disabled = false;
+        labelLoaded = { yes: typeof m.yes === "string" ? m.yes : "", no: typeof m.no === "string" ? m.no : "" };
+        yesField.input.value = labelLoaded.yes;
+        noField.input.value = labelLoaded.no;
+        yesField.input.disabled = false;
+        noField.input.disabled = false;
       }).catch(() => { infoInput.placeholder = "안내문을 불러오지 못했습니다"; });
 
       const hint = document.createElement("p");
@@ -622,6 +686,13 @@
           editStatus.className = "status-msg error";
           return;
         }
+        const newOpen = localInputToMs(openField.input.value);
+        const newClose = localInputToMs(closeField.input.value);
+        if (newOpen && newClose && newClose <= newOpen) {
+          editStatus.textContent = "참여 마감은 참여 시작보다 뒤여야 합니다.";
+          editStatus.className = "status-msg error";
+          return;
+        }
         saveBtn.disabled = true;
         cancelBtn.disabled = true;
         editStatus.textContent = "저장 중...";
@@ -643,6 +714,36 @@
               return;
             }
           }
+          // 참여 시간도 바뀐 쪽만 쓴다
+          if (whenLoaded !== null) {
+            const metaRef = sessionRef(db, s.code).child("meta");
+            try {
+              if (newOpen !== whenLoaded.open) await (newOpen ? metaRef.child("open").set(newOpen) : metaRef.child("open").remove());
+              if (newClose !== whenLoaded.close) await (newClose ? metaRef.child("close").set(newClose) : metaRef.child("close").remove());
+            } catch (whenErr) {
+              editStatus.textContent = "참여 시간을 저장하지 못했습니다. Firebase 콘솔에 보안 규칙을 게시했는지 확인해 주세요.";
+              editStatus.className = "status-msg error";
+              saveBtn.disabled = false;
+              cancelBtn.disabled = false;
+              return;
+            }
+          }
+          // 버튼 이름 (참석 확인 세션만)
+          if (parts.form === "rsvp" && labelLoaded !== null) {
+            const metaRef = sessionRef(db, s.code).child("meta");
+            const newYes = yesField.input.value.trim();
+            const newNo = noField.input.value.trim();
+            try {
+              if (newYes !== labelLoaded.yes) await (newYes ? metaRef.child("yes").set(newYes) : metaRef.child("yes").remove());
+              if (newNo !== labelLoaded.no) await (newNo ? metaRef.child("no").set(newNo) : metaRef.child("no").remove());
+            } catch (labelErr) {
+              editStatus.textContent = "버튼 이름을 저장하지 못했습니다. Firebase 콘솔에 보안 규칙을 게시했는지 확인해 주세요.";
+              editStatus.className = "status-msg error";
+              saveBtn.disabled = false;
+              cancelBtn.disabled = false;
+              return;
+            }
+          }
           renderSessionList();
         } catch (err) {
           editStatus.textContent = "저장에 실패했습니다. 로그인 상태를 확인하고 다시 시도해 주세요.";
@@ -658,12 +759,23 @@
       form.appendChild(qInput);
       form.appendChild(hintInput);
       form.appendChild(infoInput);
+      form.appendChild(openField.wrap);
+      form.appendChild(closeField.wrap);
+      if (parts.form === "rsvp") {
+        form.appendChild(yesField.wrap);
+        form.appendChild(noField.wrap);
+      }
       form.appendChild(hint);
       form.appendChild(editStatus);
       form.appendChild(btnRow);
       item.appendChild(form);
       qInput.focus();
     }
+
+    // 버튼 이름 칸은 참석 확인 형식을 골랐을 때만 보인다
+    document.getElementById("inputMode").addEventListener("change", (e) => {
+      document.getElementById("rsvpLabelRow").classList.toggle("hidden", e.target.value !== "rsvp");
+    });
 
     /* ── 세션 만들기 ── */
     function todayPrefix() {
@@ -676,6 +788,13 @@
       const name = document.getElementById("sessionName").value.trim();
       const question = document.getElementById("question").value.trim();
       const questionHint = document.getElementById("questionHint").value.trim();
+      const openAt = localInputToMs(document.getElementById("openAt").value);
+      const closeAt = localInputToMs(document.getElementById("closeAt").value);
+      if (openAt && closeAt && closeAt <= openAt) {
+        createStatus.textContent = "참여 마감은 참여 시작보다 뒤여야 합니다.";
+        createStatus.className = "status-msg error";
+        return;
+      }
       const rawMode = document.getElementById("inputMode").value;
       // 참석 확인은 저장할 때 "짧은 문구"로 두고, 질문 끝에 표시를 달아 구분한다 (보안 규칙 무수정)
       const isRsvp = rawMode === "rsvp";
@@ -733,10 +852,21 @@
         try { await sessionRef(db, code).child("meta").child("info").set(sessionInfo); }
         catch (err) { infoFailed = true; }
       }
+      // 참여 시간도 같은 이유로 따로 저장한다
+      try {
+        if (openAt) await sessionRef(db, code).child("meta").child("open").set(openAt);
+        if (closeAt) await sessionRef(db, code).child("meta").child("close").set(closeAt);
+        if (isRsvp) {
+          const yesLabel = document.getElementById("yesLabel").value.trim();
+          const noLabel = document.getElementById("noLabel").value.trim();
+          if (yesLabel) await sessionRef(db, code).child("meta").child("yes").set(yesLabel);
+          if (noLabel) await sessionRef(db, code).child("meta").child("no").set(noLabel);
+        }
+      } catch (err) { infoFailed = true; }
 
       // 발표 화면으로 넘기지 않는다 — 한 자리에서 5교시·6교시를 이어 만들 수 있어야 한다
       if (infoFailed) {
-        createStatus.textContent = `코드 ${code} · 세션은 만들었지만 안내문을 저장하지 못했습니다. Firebase 콘솔에 보안 규칙을 게시한 뒤 목록의 “수정”에서 안내문을 다시 넣어 주세요.`;
+        createStatus.textContent = `코드 ${code} · 세션은 만들었지만 안내문·참여 시간·버튼 이름을 저장하지 못했습니다. Firebase 콘솔에 보안 규칙을 게시한 뒤 목록의 “수정”에서 다시 넣어 주세요.`;
         createStatus.className = "status-msg error";
       } else {
         createStatus.textContent = `코드 ${code} · 세션을 만들었습니다. 이어서 다음 세션을 만들 수 있습니다.`;

@@ -120,3 +120,41 @@ function renderQuestion(el, raw) {
   }
   return parts;
 }
+
+/* ── 참여 시간 ──
+   meta.open / meta.close (밀리초). 둘 다 선택이다. 없으면 언제든 참여할 수 있다.
+   막는 것은 보안 규칙이 하고(서버 시각 기준), 화면은 이유를 알려 줄 뿐이다 */
+function windowStateOf(openAt, closeAt, nowMs) {
+  if (openAt && nowMs < openAt) return "before";
+  if (closeAt && nowMs > closeAt) return "after";
+  return "open";
+}
+
+// "11월 17일(화) 오전 9:00"
+function formatWhen(ms) {
+  const d = new Date(ms);
+  const h = d.getHours();
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${d.getMonth() + 1}월 ${d.getDate()}일(${"일월화수목금토"[d.getDay()]}) ${h < 12 ? "오전" : "오후"} ${h12}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+// 입력칸(datetime-local) 값 ↔ 밀리초. 빈 값은 null
+function localInputToMs(value) {
+  if (!value) return null;
+  const ms = new Date(value).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+function msToLocalInput(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/* ── 참석 확인 버튼 이름 ──
+   저장되는 답은 늘 "이름 참석"·"이름 불참"이다(집계용 표시). 화면에 보이는 글자만 강사가 바꾼다
+   (meta.yes / meta.no). 그래서 버튼 이름을 나중에 고쳐도 이미 받은 답이 흐트러지지 않는다 */
+function rsvpLabels(yes, no) {
+  const clean = (v, fallback) => (typeof v === "string" && v.trim() ? v.trim().slice(0, 12) : fallback);
+  return { yes: clean(yes, RSVP_YES), no: clean(no, RSVP_NO) };
+}

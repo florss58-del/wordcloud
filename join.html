@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>단어 제출 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=18" />
+  <link rel="stylesheet" href="./css/style.css?v=19" />
 </head>
 <body>
   <div class="page-title">
@@ -47,6 +47,13 @@
           <p><strong>세션이 종료되었습니다</strong><br />참여해 주셔서 감사합니다</p>
         </div>
 
+        <div id="windowArea" class="join-done hidden">
+          <p class="big"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></p>
+          <p><strong id="windowTitle"></strong><br /><span id="windowSub"></span></p>
+          <p id="windowMine" class="join-mylink hidden"></p>
+        </div>
+        <p id="windowNote" class="join-window hidden"></p>
+
         <div id="myWords" class="submitted-words"></div>
         <p id="rsvpCount" class="rsvp-count hidden"></p>
       </div>
@@ -64,7 +71,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="./js/firebase-config.js"></script>
-  <script src="./js/common.js?v=18"></script>
+  <script src="./js/common.js?v=19"></script>
   <script src="./js/korean.js"></script>
   <script>
     const db = initFirebase();
@@ -97,10 +104,26 @@
     const linkKey = "wc_link_" + code;
     let myEntry = JSON.parse(localStorage.getItem(linkKey) || "null"); // {id, nick, url}
 
+    // 참여 시간 — 강사가 정한 시작·마감(없으면 null). 서버 시각으로 판단한다(기기 시계가 틀려도 맞게)
+    let openAt = null, closeAt = null, serverOffset = 0;
+    const windowArea = document.getElementById("windowArea");
+    const windowNoteEl = document.getElementById("windowNote");
+    const winState = () => windowStateOf(openAt, closeAt, Date.now() + serverOffset);
+    let lastWinState = "open";
+
     // 참석 확인 형식 — 이름을 적고 참석·불참 버튼을 누른다. 답은 "이름 참석"처럼 문구 하나로 저장한다
     let rsvpMode = false;
     const rsvpBtns = document.getElementById("rsvpBtns");
     const rsvpCountEl = document.getElementById("rsvpCount");
+    // 버튼에 보이는 이름. 저장되는 답은 늘 참석/불참이고 화면 글자만 강사가 정한다
+    let labels = rsvpLabels();
+    let rsvpYes = 0, rsvpNo = 0;
+    const labelOf = (status) => (status === RSVP_YES ? labels.yes : labels.no);
+    function renderRsvpLabels() {
+      document.getElementById("rsvpYesBtn").textContent = labels.yes;
+      document.getElementById("rsvpNoBtn").textContent = labels.no;
+      rsvpCountEl.textContent = `지금까지 응답 ${rsvpYes + rsvpNo}명 · ${labels.yes} ${rsvpYes}명 · ${labels.no} ${rsvpNo}명`;
+    }
 
     function setStatus(message, type) {
       statusEl.textContent = message;
@@ -110,7 +133,7 @@
     function renderMyState() {
       const left = maxPerUser - myWords.length;
       if (rsvpMode) {
-        remainEl.textContent = myWords.length ? "" : "이름을 적고 참석 또는 불참을 눌러 주세요";
+        remainEl.textContent = myWords.length ? "" : "이름을 적고 아래 버튼을 눌러 주세요";
       } else if (inputMode === "link") {
         remainEl.textContent = myWords.length ? "" : "이름과 작품 주소를 올려요";
       } else {
@@ -123,16 +146,41 @@
       if (sessionClosed) {
         inputArea.classList.add("hidden");
         doneArea.classList.add("hidden");
+        windowArea.classList.add("hidden");
+        windowNoteEl.classList.add("hidden");
         closedArea.classList.remove("hidden");
         return;
       }
       closedArea.classList.add("hidden");
+
+      // 참여 시간 밖이면 입력을 감추고 이유를 알려 준다
+      const ws = winState();
+      lastWinState = ws;
+      if (ws !== "open") {
+        inputArea.classList.add("hidden");
+        doneArea.classList.add("hidden");
+        windowNoteEl.classList.add("hidden");
+        remainEl.textContent = "";
+        document.getElementById("windowTitle").textContent = ws === "before" ? "아직 참여 시간이 아닙니다" : "참여 시간이 끝났습니다";
+        document.getElementById("windowSub").textContent = ws === "before"
+          ? formatWhen(openAt) + "부터 참여할 수 있습니다"
+          : formatWhen(closeAt) + "에 마감되었습니다";
+        const mineEl = document.getElementById("windowMine");
+        const mine = rsvpMode && myEntry ? "내 응답: " + myEntry.nick + " · " + labelOf(myEntry.status) : "";
+        mineEl.textContent = mine;
+        mineEl.classList.toggle("hidden", !mine);
+        windowArea.classList.remove("hidden");
+        return;
+      }
+      windowArea.classList.add("hidden");
+      windowNoteEl.textContent = closeAt ? "참여 마감: " + formatWhen(closeAt) : "";
+      windowNoteEl.classList.toggle("hidden", !closeAt);
       if (left <= 0) {
         inputArea.classList.add("hidden");
         doneArea.classList.remove("hidden");
         // 링크 모드에서는 잘못 올렸을 때 고칠 수 있게 열어 둔다
         if (rsvpMode && myEntry) {
-          myLinkEl.textContent = myEntry.nick + " · " + myEntry.status;
+          myLinkEl.textContent = myEntry.nick + " · " + labelOf(myEntry.status);
           editBtn.textContent = "답을 바꿀게요";
           editArea.classList.remove("hidden");
         } else if (inputMode === "link" && myEntry) {
@@ -172,6 +220,13 @@
         infoEl.classList.toggle("hidden", !has);
       });
 
+      // 참여 시간 — 강사가 고치면 바로 따라간다. 시각이 지나 상태가 바뀔 때만 화면을 다시 그린다
+      // (주기적으로 통째로 다시 그리면 "답을 바꿀게요"로 연 입력창이 닫혀 버린다)
+      sessionRef(db, code).child("meta").child("open").on("value", (v) => { openAt = Number(v.val()) || null; renderMyState(); });
+      sessionRef(db, code).child("meta").child("close").on("value", (v) => { closeAt = Number(v.val()) || null; renderMyState(); });
+      db.ref(".info/serverTimeOffset").on("value", (v) => { serverOffset = Number(v.val()) || 0; if (winState() !== lastWinState) renderMyState(); });
+      setInterval(() => { if (winState() !== lastWinState) renderMyState(); }, 5000);
+
       // 강사가 주제를 수정하면 학생 화면에도 즉시 반영
       sessionRef(db, code).child("meta").child("q").on("value", (qSnap) => {
         const q = qSnap.val();
@@ -196,8 +251,16 @@
             if (!r) return;
             if (r.status === RSVP_YES) yes += 1; else no += 1;
           });
-          rsvpCountEl.textContent = `지금까지 응답 ${yes + no}명 · 참석 ${yes}명 · 불참 ${no}명`;
+          rsvpYes = yes; rsvpNo = no;
+          renderRsvpLabels();
         });
+        // 강사가 버튼 이름을 고치면 바로 따라간다
+        const applyLabels = () => { renderRsvpLabels(); renderMyState(); };
+        let metaYes = meta.yes, metaNo = meta.no;
+        labels = rsvpLabels(metaYes, metaNo);
+        renderRsvpLabels();
+        sessionRef(db, code).child("meta").child("yes").on("value", (v) => { metaYes = v.val(); labels = rsvpLabels(metaYes, metaNo); applyLabels(); });
+        sessionRef(db, code).child("meta").child("no").on("value", (v) => { metaNo = v.val(); labels = rsvpLabels(metaYes, metaNo); applyLabels(); });
       } else if (inputMode === "phrase") {
         wordInput.maxLength = 30;
         wordInput.placeholder = "짧은 문구를 입력하세요 (최대 30자)";
@@ -239,6 +302,7 @@
     async function submitLink() {
       // 이미 올렸어도 "고치기"로 다시 올리는 건 허용한다 (myEntry가 있으면 덮어쓰기)
       if (sessionClosed) return;
+      if (winState() !== "open") { renderMyState(); return; }
       if (!myEntry && myWords.length >= maxPerUser) return;
 
       const nick = nickInput.value.trim();
@@ -287,6 +351,7 @@
     // 참석 확인 — 이름 + 누른 버튼을 한 문구로 저장한다. 다시 누르면 같은 항목을 덮어쓴다(답 바꾸기)
     async function submitRsvp(status) {
       if (sessionClosed) return;
+      if (winState() !== "open") { renderMyState(); return; }
       if (!myEntry && myWords.length >= maxPerUser) return;
 
       const checked = validatePhrase(nickInput.value);
@@ -332,7 +397,7 @@
           nickInput.value = myEntry.nick;
           doneArea.classList.add("hidden");
           inputArea.classList.remove("hidden");
-          setStatus("이름을 확인하고 참석 또는 불참을 다시 눌러 주세요.", "");
+          setStatus("이름을 확인하고 다시 눌러 주세요.", "");
           return;
         }
         nickInput.value = myEntry.nick;
@@ -350,6 +415,7 @@
       if (rsvpMode) return;   // 참석 확인은 참석·불참 버튼으로만 낸다
       if (inputMode === "link") return submitLink();
       if (sessionClosed || myWords.length >= maxPerUser) return;
+      if (winState() !== "open") { renderMyState(); return; }
 
       const result = inputMode === "phrase" ? validatePhrase(wordInput.value) : validateWord(wordInput.value);
       if (!result.ok) { setStatus(result.reason, "error"); return; }
