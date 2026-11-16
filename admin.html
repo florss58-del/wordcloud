@@ -45,6 +45,22 @@
     .session-hint .hint-text { display: none; min-width: 0; word-break: keep-all; line-height: 1.45; }
     .session-hint.open .hint-label { display: none; }
     .session-hint.open .hint-text { display: block; }
+    /* 지난 세션 찾기 — 달별 묶음. 처음에는 닫혀 있다 */
+    .found-group { border: 1px solid var(--border); border-radius: 14px; background: #fff; }
+    .found-group + .found-group { margin-top: 0.5rem; }
+    .found-head {
+      width: 100%; display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.75rem 0.95rem; border: 0; background: transparent; cursor: pointer;
+      font: inherit; color: inherit; text-align: left; border-radius: 14px;
+    }
+    .found-head:hover { background: var(--accent-soft); }
+    .found-title { font-weight: 600; font-size: 1rem; }
+    .found-count { margin-left: auto; color: #6e6e73; font-size: 0.88rem; font-weight: 500; white-space: nowrap; }
+    .found-group .hint-toggle { pointer-events: none; }
+    .found-group.open .hint-toggle .icon { transform: rotate(180deg); }
+    .found-body { display: none; padding: 0 0.7rem 0.7rem; }
+    .found-group.open .found-body { display: block; }
+    .found-body .session-item + .session-item { margin-top: 0.5rem; }
     .session-code-badge {
       grid-area: badge; align-self: center;
       font-weight: 600; letter-spacing: 0.15em; color: var(--accent);
@@ -507,6 +523,8 @@
     /* ── 목록에 없는 지난 세션 찾기 (DB 전체에서 검색해 계정 목록에 복구) ── */
     const findStatus = document.getElementById("findStatus");
     const foundListEl = document.getElementById("foundList");
+    const findBtn = document.getElementById("findBtn");
+    const openFoundGroups = new Set();   // 펼쳐 둔 달. 저장하지 않는다 → 새로 접속하면 전부 닫힘
 
     async function findMissingSessions() {
       if (!db) return;
@@ -544,13 +562,69 @@
 
       if (found.length === 0) {
         findStatus.textContent = "목록에 없는 세션이 없습니다.";
+        findBtn.textContent = "목록에 없는 지난 세션 찾기";
         return;
       }
-      findStatus.textContent = `목록에 없는 세션 ${found.length}개를 찾았습니다. 필요한 세션을 목록에 추가하세요.`;
+      findStatus.textContent = `목록에 없는 세션 ${found.length}개를 찾았습니다. 달을 눌러 펼치고, 필요한 세션을 목록에 추가하세요.`;
+      findBtn.textContent = "지난 세션 목록 닫기";
+
+      // 달별로 묶는다. 처음에는 전부 닫혀 있고, 누른 달만 펼쳐진다.
+      // 펼친 달은 이 화면에 머무는 동안만 기억한다(정렬을 바꿔 다시 그려도 유지). 새로 접속하면 다시 닫힌다
+      const groups = new Map();   // "2026-08" → {key, title, body, head}
+      const groupOf = (created) => {
+        const d = created ? new Date(created) : null;
+        const key = d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` : "0000-00";
+        if (groups.has(key)) return groups.get(key);
+
+        const wrap = document.createElement("div");
+        wrap.className = "found-group";
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "found-head";
+        const icon = document.createElement("span");
+        icon.className = "hint-toggle";
+        icon.innerHTML = ICON_CHEVRON;
+        const title = document.createElement("span");
+        title.className = "found-title";
+        title.textContent = d ? `${d.getFullYear()}년 ${d.getMonth() + 1}월` : "날짜 없음";
+        const count = document.createElement("span");
+        count.className = "found-count";
+        head.appendChild(icon);
+        head.appendChild(title);
+        head.appendChild(count);
+
+        const body = document.createElement("div");
+        body.className = "found-body session-list";
+
+        const setOpen = (open) => {
+          wrap.classList.toggle("open", open);
+          head.setAttribute("aria-expanded", open ? "true" : "false");
+          head.title = open ? "접기" : "펼치기";
+          if (open) openFoundGroups.add(key); else openFoundGroups.delete(key);
+        };
+        head.addEventListener("click", () => setOpen(!wrap.classList.contains("open")));
+        setOpen(openFoundGroups.has(key));
+
+        // 세션을 목록에 추가하거나 지우면 개수를 다시 센다. 다 비면 묶음째 치운다
+        const recount = () => {
+          const items = [...body.children];
+          if (!items.length) { wrap.remove(); openFoundGroups.delete(key); return; }
+          const empty = items.filter((el) => el.dataset.empty === "1").length;
+          count.textContent = `${items.length}개` + (empty ? ` · 빈 세션 ${empty}개` : "");
+        };
+        new MutationObserver(recount).observe(body, { childList: true });
+
+        wrap.appendChild(head);
+        wrap.appendChild(body);
+        const group = { key, body, wrap, recount };
+        groups.set(key, group);
+        return group;
+      };
 
       foundSorted.forEach((s) => {
         const item = document.createElement("div");
         item.className = "session-item";
+        item.dataset.empty = s.entryCount ? "0" : "1";
 
         const info = document.createElement("div");
         info.className = "session-info";
@@ -590,11 +664,28 @@
         item.appendChild(info);
         item.appendChild(badge);
         item.appendChild(actions);
-        foundListEl.appendChild(item);
+        groupOf(s.created).body.appendChild(item);
+      });
+
+      // 최근 달이 위로 오게 놓는다 (날짜 없는 묶음은 맨 아래)
+      [...groups.values()].sort((a, b) => b.key.localeCompare(a.key)).forEach((g) => {
+        g.recount();
+        foundListEl.appendChild(g.wrap);
       });
     }
 
-    document.getElementById("findBtn").addEventListener("click", findMissingSessions);
+    // 지난 세션 목록을 통째로 닫는다
+    function closeFoundList() {
+      foundListEl.innerHTML = "";
+      findStatus.textContent = "";
+      findBtn.textContent = "목록에 없는 지난 세션 찾기";
+    }
+
+    // 버튼 하나로 여닫는다. 열려 있으면 닫고, 닫혀 있으면 찾아서 연다
+    findBtn.addEventListener("click", () => {
+      if (foundListEl.children.length) closeFoundList();
+      else findMissingSessions();
+    });
 
     const sortSelect = document.getElementById("sortMode");
     sortSelect.value = sortMode;
@@ -994,7 +1085,6 @@
       // 발표 화면에서 세션을 종료하고 넘어온 경우 지난 세션 목록을 바로 펼쳐 준다
       if (new URLSearchParams(location.search).get("find") === "1") {
         await findMissingSessions();
-        const findBtn = document.getElementById("findBtn");
         if (findBtn.scrollIntoView) findBtn.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     });
