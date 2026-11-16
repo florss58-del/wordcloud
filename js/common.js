@@ -70,17 +70,42 @@ function escapeHtml(text) {
 /* ── 질문 + 예시 ──
    보안 규칙의 q(80자) 하나에 "질문\n예시"로 함께 담는다.
    나누는 것은 화면에서만 한다. */
+// 참석 확인 형식의 표시. 보안 규칙의 mode는 word/phrase/link만 받으므로
+// 새 형식을 mode에 넣지 않고 질문 값의 마지막 줄에 표시를 달아 둔다 (규칙을 다시 게시하지 않아도 된다)
+const FORM_MARK = "#rsvp";
+const RSVP_YES = "참석";
+const RSVP_NO = "불참";
+
 function splitQuestion(raw) {
-  const text = typeof raw === "string" ? raw : "";
+  let text = typeof raw === "string" ? raw : "";
+  let form = "";
+  const lines = text.split("\n");
+  if (lines.length > 1 && lines[lines.length - 1].trim() === FORM_MARK) {
+    form = "rsvp";
+    lines.pop();
+    text = lines.join("\n");
+  }
   const nl = text.indexOf("\n");
-  if (nl === -1) return { main: text.trim(), hint: "" };
-  return { main: text.slice(0, nl).trim(), hint: text.slice(nl + 1).trim() };
+  if (nl === -1) return { main: text.trim(), hint: "", form };
+  return { main: text.slice(0, nl).trim(), hint: text.slice(nl + 1).trim(), form };
 }
 
-function joinQuestion(main, hint) {
+function joinQuestion(main, hint, form) {
   const m = (main || "").trim();
   const h = (hint || "").trim();
-  return h ? m + "\n" + h : m;
+  const q = h ? m + "\n" + h : m;
+  return form === "rsvp" ? q + "\n" + FORM_MARK : q;
+}
+
+// 참석 확인 답("홍길동 참석")을 이름과 응답으로 나눈다. 형식이 아니면 null
+function parseRsvp(w) {
+  if (typeof w !== "string") return null;
+  const text = w.trim();
+  const cut = text.lastIndexOf(" ");
+  if (cut < 1) return null;
+  const status = text.slice(cut + 1);
+  if (status !== RSVP_YES && status !== RSVP_NO) return null;
+  return { name: text.slice(0, cut).trim(), status };
 }
 
 // 질문을 두 줄로 그린다. 예시가 없으면 한 줄 그대로.

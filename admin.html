@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>세션 만들기 (강사용) - 실시간 워드클라우드</title>
   <meta name="robots" content="noindex" />
-  <link rel="stylesheet" href="./css/style.css?v=17" />
+  <link rel="stylesheet" href="./css/style.css?v=18" />
   <style>
     .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
     /* 위: 코드 배지 + 이름·질문 / 아래: 버튼 — 이름이 버튼에 밀려 잘리지 않도록 */
@@ -87,6 +87,11 @@
           <input id="questionHint" class="input" maxlength="60" placeholder="예: 글쓰기 / 이미지 만들기 / 번역 / 검색" />
           <p class="form-hint">질문과 예시를 합쳐 80자까지 넣을 수 있습니다</p>
         </div>
+        <div class="field">
+          <label for="sessionInfo">안내문 (선택 · 교육생 화면 맨 위에 그대로 보입니다)</label>
+          <textarea id="sessionInfo" class="textarea" rows="7" maxlength="1000" placeholder="일시·장소·준비물·회차별 내용처럼 교육생이 읽어야 할 내용을 적습니다. 줄바꿈이 그대로 보입니다"></textarea>
+          <p class="form-hint">1000자까지 · 비워 두면 안내문 없이 질문만 보입니다</p>
+        </div>
         <div class="option-row" style="display:flex;gap:0.8rem">
           <div class="field" style="flex:1">
             <label for="inputMode">입력 형식</label>
@@ -94,6 +99,7 @@
               <option value="word" selected>단어 (조사 정리·집계, 12자)</option>
               <option value="phrase">짧은 문구 (띄어쓰기 허용, 30자)</option>
               <option value="link">작품 링크 (이름 + 주소, 갤러리로 표시)</option>
+              <option value="rsvp">참석 확인 (이름 + 참석·불참 버튼, 명단으로 표시)</option>
             </select>
           </div>
           <div class="field" style="flex:1">
@@ -158,7 +164,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="./js/firebase-config.js"></script>
-  <script src="./js/common.js"></script>
+  <script src="./js/common.js?v=18"></script>
   <script src="./js/auth.js"></script>
   <script>
     const db = initFirebase();
@@ -564,6 +570,21 @@
       hintInput.value = parts.hint;
       hintInput.placeholder = "예시 (선택 · 질문 아래 작게 보입니다)";
 
+      // 안내문은 세션 쪽(meta.info)에만 있어 열 때 읽어 온다. 읽기 전에는 저장하지 않는다(빈 값으로 덮어쓰지 않게)
+      const infoInput = document.createElement("textarea");
+      infoInput.className = "textarea";
+      infoInput.rows = 6;
+      infoInput.maxLength = 1000;
+      infoInput.placeholder = "안내문을 불러오는 중...";
+      infoInput.disabled = true;
+      let infoLoaded = null;   // 불러온 값. null이면 아직 못 읽었다
+      sessionRef(db, s.code).child("meta").child("info").get().then((infoSnap) => {
+        infoLoaded = typeof infoSnap.val() === "string" ? infoSnap.val() : "";
+        infoInput.value = infoLoaded;
+        infoInput.placeholder = "안내문 (선택 · 교육생 화면 맨 위에 그대로 보입니다)";
+        infoInput.disabled = false;
+      }).catch(() => { infoInput.placeholder = "안내문을 불러오지 못했습니다"; });
+
       const hint = document.createElement("p");
       hint.className = "form-hint";
       hint.style.margin = "0";
@@ -585,7 +606,7 @@
       saveBtn.addEventListener("click", async () => {
         const newName = nameInput.value.trim();
         const newMain = qInput.value.trim();
-        const newQ = joinQuestion(newMain, hintInput.value);
+        const newQ = joinQuestion(newMain, hintInput.value, parts.form); // 참석 확인 표시를 잃지 않게
         if (!newName) {
           editStatus.textContent = "세션 이름을 입력해 주세요.";
           editStatus.className = "status-msg error";
@@ -608,6 +629,20 @@
         try {
           await sessionRef(db, s.code).child("meta").update({ name: newName, q: newQ });
           await updateMySession(s.code, { name: newName, q: newQ });
+          // 안내문은 바뀌었을 때만 쓴다
+          const newInfo = infoInput.value.trim();
+          if (infoLoaded !== null && newInfo !== infoLoaded.trim()) {
+            const infoRef = sessionRef(db, s.code).child("meta").child("info");
+            try {
+              await (newInfo ? infoRef.set(newInfo) : infoRef.remove());
+            } catch (infoErr) {
+              editStatus.textContent = "이름과 질문은 저장했지만 안내문을 저장하지 못했습니다. Firebase 콘솔에 보안 규칙을 게시했는지 확인해 주세요.";
+              editStatus.className = "status-msg error";
+              saveBtn.disabled = false;
+              cancelBtn.disabled = false;
+              return;
+            }
+          }
           renderSessionList();
         } catch (err) {
           editStatus.textContent = "저장에 실패했습니다. 로그인 상태를 확인하고 다시 시도해 주세요.";
@@ -622,6 +657,7 @@
       form.appendChild(nameInput);
       form.appendChild(qInput);
       form.appendChild(hintInput);
+      form.appendChild(infoInput);
       form.appendChild(hint);
       form.appendChild(editStatus);
       form.appendChild(btnRow);
@@ -640,7 +676,10 @@
       const name = document.getElementById("sessionName").value.trim();
       const question = document.getElementById("question").value.trim();
       const questionHint = document.getElementById("questionHint").value.trim();
-      const fullQuestion = joinQuestion(question, questionHint);
+      const rawMode = document.getElementById("inputMode").value;
+      // 참석 확인은 저장할 때 "짧은 문구"로 두고, 질문 끝에 표시를 달아 구분한다 (보안 규칙 무수정)
+      const isRsvp = rawMode === "rsvp";
+      const fullQuestion = joinQuestion(question, questionHint, isRsvp ? "rsvp" : "");
       if (!name || name === todayPrefix()) {
         createStatus.textContent = "세션 이름을 입력해 주세요. (예: 20260712_AI기초)";
         createStatus.className = "status-msg error";
@@ -653,14 +692,15 @@
       }
       // 질문과 예시는 한 값에 함께 담기므로 합친 길이가 보안 규칙(80자)을 넘으면 저장이 거부된다
       if (fullQuestion.length > 80) {
-        createStatus.textContent = `질문과 예시를 합쳐 80자까지 넣을 수 있습니다. 지금은 ${fullQuestion.length}자입니다.`;
+        createStatus.textContent = isRsvp
+          ? `참석 확인은 질문과 예시를 합쳐 74자까지 넣을 수 있습니다. 지금은 ${fullQuestion.length - 6}자입니다.`
+          : `질문과 예시를 합쳐 80자까지 넣을 수 있습니다. 지금은 ${fullQuestion.length}자입니다.`;
         createStatus.className = "status-msg error";
         return;
       }
-      const rawMode = document.getElementById("inputMode").value;
-      const mode = rawMode === "phrase" || rawMode === "link" ? rawMode : "word";
-      // 작품 링크는 한 사람이 하나만 올린다 (제출 개수 선택과 무관)
-      const maxPerUser = mode === "link" ? 1 : Number(document.getElementById("maxPerUser").value);
+      const mode = isRsvp ? "phrase" : (rawMode === "phrase" || rawMode === "link" ? rawMode : "word");
+      // 작품 링크·참석 확인은 한 사람이 하나만 낸다 (제출 개수 선택과 무관)
+      const maxPerUser = mode === "link" || isRsvp ? 1 : Number(document.getElementById("maxPerUser").value);
 
       let code = "";
       for (let i = 0; i < 5; i++) {
@@ -685,9 +725,23 @@
       await saveMySession({ code, name, q: fullQuestion, mode, max: maxPerUser, created });
       renderSessionList();
 
+      // 안내문은 세션을 만든 뒤 따로 저장한다. 보안 규칙에 info가 아직 게시되지 않았어도
+      // 세션 만들기 자체는 막히지 않게 하려는 것이다 (한 번에 넣으면 세션까지 통째로 거부된다)
+      const sessionInfo = document.getElementById("sessionInfo").value.trim();
+      let infoFailed = false;
+      if (sessionInfo) {
+        try { await sessionRef(db, code).child("meta").child("info").set(sessionInfo); }
+        catch (err) { infoFailed = true; }
+      }
+
       // 발표 화면으로 넘기지 않는다 — 한 자리에서 5교시·6교시를 이어 만들 수 있어야 한다
-      createStatus.textContent = `코드 ${code} · 세션을 만들었습니다. 이어서 다음 세션을 만들 수 있습니다.`;
-      createStatus.className = "status-msg success";
+      if (infoFailed) {
+        createStatus.textContent = `코드 ${code} · 세션은 만들었지만 안내문을 저장하지 못했습니다. Firebase 콘솔에 보안 규칙을 게시한 뒤 목록의 “수정”에서 안내문을 다시 넣어 주세요.`;
+        createStatus.className = "status-msg error";
+      } else {
+        createStatus.textContent = `코드 ${code} · 세션을 만들었습니다. 이어서 다음 세션을 만들 수 있습니다.`;
+        createStatus.className = "status-msg success";
+      }
       const openLastBtn = document.getElementById("openLastBtn");
       openLastBtn.dataset.code = code;
       openLastBtn.classList.remove("hidden");

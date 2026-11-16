@@ -484,3 +484,81 @@ body.dark .gallery-empty { color: #a1a1a6; }
   word-break: break-all;
   text-align: left;
 }
+
+/* ── 참석 확인 형식 (질문 끝에 #rsvp 표시가 달린 세션) ── */
+/* 학생 화면: 참석·불참 버튼 두 개를 나란히 */
+.rsvp-btns { display: flex; gap: 0.7rem; }
+.rsvp-btns .btn { flex: 1; }
+.rsvp-count { margin-top: 1.2rem; text-align: center; color: #6e6e73; font-size: 0.92rem; font-weight: 500; }
+
+/* 발표 화면: 캔버스 자리에 참석·불참 두 칸 */
+/* 화면을 가득 채운다. 참석 칸을 넓게(3:2), 두 칸 모두 아래까지 늘린다 — 교실 뒤에서도 읽혀야 한다 */
+.rsvp-board {
+  flex: 1; min-height: 0;
+  display: grid; grid-template-columns: 3fr 2fr; gap: 1.3rem;
+  padding: 1.3rem 1.5rem;
+}
+.rsvp-col {
+  display: flex; flex-direction: column; min-height: 0;
+  border: 1px solid var(--border); border-radius: 20px; background: #fff; overflow: hidden;
+}
+.rsvp-col.is-yes { border-top: 6px solid #0066cc; }
+.rsvp-col.is-no { border-top: 6px solid #8e8e93; }
+.rsvp-head {
+  flex: 0 0 auto; margin: 0; padding: 1rem 1.5rem 0.9rem;
+  display: flex; align-items: baseline; gap: 0.45em;
+  font-size: clamp(1.5rem, 2.6vw, 2.4rem); font-weight: 700; letter-spacing: -0.02em; color: #1d1d1f;
+  border-bottom: 1px solid var(--border);
+}
+.rsvp-head strong { font-size: 1.5em; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.rsvp-head .rsvp-unit { font-size: 0.7em; font-weight: 600; color: #6e6e73; margin-left: -0.25em; }
+.rsvp-col.is-yes .rsvp-head strong { color: #0066cc; }
+.rsvp-col.is-no .rsvp-head strong { color: #48484d; }
+/* 이름은 같은 폭의 칸에 줄을 맞춰 놓는다 (알약 모양이 들쭉날쭉하면 훑어 읽기 어렵다) */
+.rsvp-names {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(5.4em, 1fr));
+  gap: 0.5em 0.6em; align-content: start;
+  padding: 1.1rem 1.4rem 1.3rem;
+  font-size: clamp(1.35rem, 2.3vw, 2.3rem);
+}
+.rsvp-name {
+  padding: 0.4em 0.5em; border-radius: 12px; text-align: center;
+  font-size: 1em; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25;
+  word-break: keep-all; overflow-wrap: anywhere;
+}
+.rsvp-col.is-yes .rsvp-name { background: #e8f1fb; color: #00408a; }
+.rsvp-col.is-no .rsvp-name { background: #f0f0f2; color: #3a3a3c; }
+.rsvp-none { grid-column: 1 / -1; color: #6e6e73; font-size: 0.6em; font-weight: 500; padding: 0.4em 0.2em; }
+/* 오른쪽 아래 QR 상자와 겹치지 않게 오른쪽을 비운다. QR을 숨기면 끝까지 쓴다
+   (불참 칸만 QR 위에서 끝내는 안은 낮은 화면에서 칸이 너무 작아져 이름이 가려졌다) */
+.rsvp-board { padding-right: 12.6rem; }
+.present-wrap:has(#sidePanel.hidden) .rsvp-board { padding-right: 1.5rem; }
+/* 참석 확인에서는 머리말의 응답 인원을 크게 */
+.rsvp-page .present-stats { font-size: clamp(1.05rem, 1.6vw, 1.5rem); color: #48484d; }
+.rsvp-page .present-stats strong { font-size: 1.6em; font-weight: 800; }
+.dark.rsvp-page .present-stats { color: #d1d1d6; }
+body.dark .rsvp-col { background: #2c2c2e; border-color: #3a3a3c; }
+body.dark .rsvp-head { color: #f5f5f7; }
+body.dark .rsvp-col.is-yes .rsvp-head strong { color: #4da3ff; }
+body.dark .rsvp-col.is-no .rsvp-head strong { color: #a1a1a6; }
+body.dark .rsvp-col.is-yes .rsvp-name { background: #16365c; color: #cfe4ff; }
+body.dark .rsvp-col.is-no .rsvp-name { background: #3a3a3c; color: #e5e5ea; }
+body.dark .rsvp-none { color: #a1a1a6; }
+body.dark .rsvp-head { border-color: #3a3a3c; }
+body.dark .rsvp-head .rsvp-unit { color: #a1a1a6; }
+@media (max-width: 640px) {
+  .rsvp-board { grid-template-columns: 1fr; padding: 1rem; overflow-y: auto; }
+  .rsvp-col { overflow: visible; }
+  .rsvp-board, .present-wrap:has(#sidePanel.hidden) .rsvp-board { padding-right: 1rem; }
+  .rsvp-col.is-no { margin-bottom: 14rem; }
+  .rsvp-names { overflow: visible; }
+}
+
+/* 안내문 (join.html) — 강사가 적은 일시·장소·준비물·회차별 내용. 줄바꿈을 그대로 살린다 */
+.join-info {
+  margin-bottom: 1.3rem; padding: 1rem 1.1rem;
+  background: #f5f5f7; border-radius: 14px;
+  font-size: 0.95rem; line-height: 1.65; color: #1d1d1f;
+  text-align: left; white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere;
+}

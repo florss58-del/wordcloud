@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>단어 제출 - 실시간 워드클라우드</title>
-  <link rel="stylesheet" href="./css/style.css?v=17" />
+  <link rel="stylesheet" href="./css/style.css?v=18" />
 </head>
 <body>
   <div class="page-title">
@@ -14,6 +14,7 @@
   <main>
     <div class="container">
       <div class="card">
+        <div id="sessionInfo" class="join-info hidden"></div>
         <p id="question" class="join-question">질문을 불러오는 중...</p>
         <p id="remain" class="join-remain"></p>
 
@@ -21,16 +22,20 @@
           <div class="field hidden" id="nickField">
             <input id="nickInput" class="input" maxlength="12" placeholder="이름 (최대 12자)" autocomplete="off" />
           </div>
-          <div class="field">
+          <div class="field" id="wordField">
             <input id="wordInput" class="input" maxlength="12" placeholder="단어 하나만 입력 (최대 12자)" autocomplete="off" />
           </div>
           <button id="submitBtn" class="btn btn-primary btn-block">제출하기</button>
+          <div id="rsvpBtns" class="rsvp-btns hidden">
+            <button id="rsvpYesBtn" class="btn btn-primary">참석</button>
+            <button id="rsvpNoBtn" class="btn btn-ghost">불참</button>
+          </div>
           <p id="status" class="status-msg"></p>
         </div>
 
         <div id="doneArea" class="join-done hidden">
           <p class="big"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="#0066cc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg></p>
-          <p><strong>제출 완료!</strong><br />이제 앞의 화면을 봐주세요.</p>
+          <p><strong id="doneTitle">제출 완료!</strong><br /><span id="doneSub">이제 앞의 화면을 봐주세요.</span></p>
           <div id="editArea" class="hidden">
             <p class="join-mylink" id="myLink"></p>
             <button id="editBtn" class="btn btn-ghost btn-block">잘못 올렸어요 · 고치기</button>
@@ -43,6 +48,7 @@
         </div>
 
         <div id="myWords" class="submitted-words"></div>
+        <p id="rsvpCount" class="rsvp-count hidden"></p>
       </div>
     </div>
   </main>
@@ -58,7 +64,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <script src="./js/firebase-config.js"></script>
-  <script src="./js/common.js"></script>
+  <script src="./js/common.js?v=18"></script>
   <script src="./js/korean.js"></script>
   <script>
     const db = initFirebase();
@@ -91,6 +97,11 @@
     const linkKey = "wc_link_" + code;
     let myEntry = JSON.parse(localStorage.getItem(linkKey) || "null"); // {id, nick, url}
 
+    // 참석 확인 형식 — 이름을 적고 참석·불참 버튼을 누른다. 답은 "이름 참석"처럼 문구 하나로 저장한다
+    let rsvpMode = false;
+    const rsvpBtns = document.getElementById("rsvpBtns");
+    const rsvpCountEl = document.getElementById("rsvpCount");
+
     function setStatus(message, type) {
       statusEl.textContent = message;
       statusEl.className = "status-msg " + (type || "");
@@ -98,14 +109,16 @@
 
     function renderMyState() {
       const left = maxPerUser - myWords.length;
-      if (inputMode === "link") {
+      if (rsvpMode) {
+        remainEl.textContent = myWords.length ? "" : "이름을 적고 참석 또는 불참을 눌러 주세요";
+      } else if (inputMode === "link") {
         remainEl.textContent = myWords.length ? "" : "이름과 작품 주소를 올려요";
       } else {
         remainEl.textContent = myWords.length
           ? `제출 ${myWords.length}/${maxPerUser}개`
           : `${maxPerUser}개까지 제출할 수 있어요`;
       }
-      myWordsEl.innerHTML = myWords.map((w) => `<span class="chip">${escapeHtml(w)}</span>`).join("");
+      myWordsEl.innerHTML = rsvpMode ? "" : myWords.map((w) => `<span class="chip">${escapeHtml(w)}</span>`).join("");
 
       if (sessionClosed) {
         inputArea.classList.add("hidden");
@@ -118,7 +131,11 @@
         inputArea.classList.add("hidden");
         doneArea.classList.remove("hidden");
         // 링크 모드에서는 잘못 올렸을 때 고칠 수 있게 열어 둔다
-        if (inputMode === "link" && myEntry) {
+        if (rsvpMode && myEntry) {
+          myLinkEl.textContent = myEntry.nick + " · " + myEntry.status;
+          editBtn.textContent = "답을 바꿀게요";
+          editArea.classList.remove("hidden");
+        } else if (inputMode === "link" && myEntry) {
           myLinkEl.textContent = myEntry.nick + " · " + myEntry.url;
           editArea.classList.remove("hidden");
         }
@@ -142,16 +159,46 @@
         return;
       }
       const meta = snap.val();
-      renderQuestion(questionEl, meta.q);
+      rsvpMode = renderQuestion(questionEl, meta.q).form === "rsvp";
       maxPerUser = Number(meta.max) || 3;
       inputMode = meta.mode === "phrase" || meta.mode === "link" ? meta.mode : "word";
+
+      // 안내문(일시·장소·준비물·회차별 내용)이 있으면 질문 위에 그대로 보여 준다. 줄바꿈은 CSS가 살린다
+      const infoEl = document.getElementById("sessionInfo");
+      sessionRef(db, code).child("meta").child("info").on("value", (infoSnap) => {
+        const info = infoSnap.val();
+        const has = typeof info === "string" && info.trim().length > 0;
+        infoEl.textContent = has ? info.trim() : "";
+        infoEl.classList.toggle("hidden", !has);
+      });
 
       // 강사가 주제를 수정하면 학생 화면에도 즉시 반영
       sessionRef(db, code).child("meta").child("q").on("value", (qSnap) => {
         const q = qSnap.val();
         if (typeof q === "string" && q.length) renderQuestion(questionEl, q);
       });
-      if (inputMode === "phrase") {
+      if (rsvpMode) {
+        document.title = "참석 확인 - EUNACLASS";
+        document.querySelector(".page-title h1").lastChild.nodeValue = " 참석 확인";
+        maxPerUser = 1;
+        nickField.classList.remove("hidden");
+        document.getElementById("wordField").classList.add("hidden");
+        submitBtn.classList.add("hidden");
+        rsvpBtns.classList.remove("hidden");
+        document.getElementById("doneTitle").textContent = "응답 완료!";
+        document.getElementById("doneSub").textContent = "응답이 저장되었습니다";
+        // 지금까지 몇 명이 답했는지 함께 보여 준다 (이름은 발표 화면에만 나온다)
+        rsvpCountEl.classList.remove("hidden");
+        sessionRef(db, code).child("entries").on("value", (entriesSnap) => {
+          let yes = 0, no = 0;
+          entriesSnap.forEach((child) => {
+            const r = parseRsvp((child.val() || {}).w);
+            if (!r) return;
+            if (r.status === RSVP_YES) yes += 1; else no += 1;
+          });
+          rsvpCountEl.textContent = `지금까지 응답 ${yes + no}명 · 참석 ${yes}명 · 불참 ${no}명`;
+        });
+      } else if (inputMode === "phrase") {
         wordInput.maxLength = 30;
         wordInput.placeholder = "짧은 문구를 입력하세요 (최대 30자)";
       } else if (inputMode === "link") {
@@ -164,7 +211,7 @@
         submitBtn.textContent = "내 작품 올리기";
       }
       renderMyState();
-      (inputMode === "link" ? nickInput : wordInput).focus();
+      (inputMode === "link" || rsvpMode ? nickInput : wordInput).focus();
 
       // 강사가 세션을 종료하면 실시간으로 입력 차단
       sessionRef(db, code).child("closed").on("value", (closedSnap) => {
@@ -237,10 +284,57 @@
       }
     }
 
+    // 참석 확인 — 이름 + 누른 버튼을 한 문구로 저장한다. 다시 누르면 같은 항목을 덮어쓴다(답 바꾸기)
+    async function submitRsvp(status) {
+      if (sessionClosed) return;
+      if (!myEntry && myWords.length >= maxPerUser) return;
+
+      const checked = validatePhrase(nickInput.value);
+      if (!checked.ok) {
+        setStatus(nickInput.value.trim() ? checked.reason : "이름을 먼저 적어 주세요.", "error");
+        nickInput.focus();
+        return;
+      }
+      const nick = checked.word;
+      if (nick.length < 2) { setStatus("이름을 두 글자 이상 적어 주세요.", "error"); nickInput.focus(); return; }
+      if (nick.length > 12) { setStatus("이름은 12자까지예요.", "error"); return; }
+
+      const buttons = [document.getElementById("rsvpYesBtn"), document.getElementById("rsvpNoBtn")];
+      buttons.forEach((b) => { b.disabled = true; });
+      try {
+        const payload = { w: nick + " " + status, c: clientId, t: firebase.database.ServerValue.TIMESTAMP };
+        if (myEntry && myEntry.id) {
+          await sessionRef(db, code).child("entries").child(myEntry.id).set(payload);
+          myEntry = { id: myEntry.id, nick, status };
+        } else {
+          const ref = await sessionRef(db, code).child("entries").push(payload);
+          myEntry = { id: ref.key, nick, status };
+          myWords.push(nick);
+          localStorage.setItem(storageKey, JSON.stringify(myWords));
+        }
+        localStorage.setItem(linkKey, JSON.stringify(myEntry));
+        setStatus("", "");
+        renderMyState();
+      } catch (error) {
+        setStatus("저장하지 못했어요. 잠시 후 다시 눌러 주세요.", "error");
+      } finally {
+        buttons.forEach((b) => { b.disabled = false; });
+      }
+    }
+    document.getElementById("rsvpYesBtn").addEventListener("click", () => submitRsvp(RSVP_YES));
+    document.getElementById("rsvpNoBtn").addEventListener("click", () => submitRsvp(RSVP_NO));
+
     // 고치기 — 올렸던 이름·주소를 그대로 불러와 다시 입력창을 연다
     if (editBtn) {
       editBtn.addEventListener("click", () => {
         if (!myEntry) return;
+        if (rsvpMode) {
+          nickInput.value = myEntry.nick;
+          doneArea.classList.add("hidden");
+          inputArea.classList.remove("hidden");
+          setStatus("이름을 확인하고 참석 또는 불참을 다시 눌러 주세요.", "");
+          return;
+        }
         nickInput.value = myEntry.nick;
         wordInput.value = myEntry.url;
         submitBtn.textContent = "고쳐서 다시 올리기";
@@ -253,6 +347,7 @@
     }
 
     async function submitWord() {
+      if (rsvpMode) return;   // 참석 확인은 참석·불참 버튼으로만 낸다
       if (inputMode === "link") return submitLink();
       if (sessionClosed || myWords.length >= maxPerUser) return;
 
@@ -294,7 +389,7 @@
 
     submitBtn.addEventListener("click", submitWord);
     wordInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submitWord(); });
-    nickInput.addEventListener("keydown", (e) => { if (e.key === "Enter") wordInput.focus(); });
+    nickInput.addEventListener("keydown", (e) => { if (e.key === "Enter" && !rsvpMode) wordInput.focus(); });
 
     init();
   </script>
