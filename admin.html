@@ -146,8 +146,8 @@
         <div class="field" style="margin-bottom:0.9rem">
           <label for="sortMode">정렬</label>
           <select id="sortMode" class="select">
-            <option value="name">이름 순 (교시 · Q번호)</option>
             <option value="new">최신 순 (만든 시각)</option>
+            <option value="name">이름 순 (교시 · Q번호)</option>
             <option value="q">질문 순 (같은 질문끼리)</option>
           </select>
           <p class="form-hint">Q번호는 이름 어디에 있어도 번호 순으로 놓입니다</p>
@@ -291,8 +291,9 @@
 
     /* ── 목록 정렬 ──
        같은 질문(5교시·6교시)을 나란히 보려면 만든 시각 순으로는 흩어진다 */
-    const SORT_KEY = "wc_admin_sort";
-    let sortMode = localStorage.getItem(SORT_KEY) || "name";
+    // 기본은 최신 순 (2026-11-16 은아님 지시). 열쇠 이름을 바꿔, 예전에 저장된 "이름 순"도 최신 순에서 다시 시작한다
+    const SORT_KEY = "wc_admin_sort2";
+    let sortMode = localStorage.getItem(SORT_KEY) || "new";
 
     // 이름에서 Q번호를 뽑는다. 이름 어디에 있어도(…_Q1_현화중 / …_현화중_Q3_작품링크) 번호 순으로 본다
     function questionNo(name) {
