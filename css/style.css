@@ -549,7 +549,10 @@ body.dark .rsvp-head { border-color: #3a3a3c; }
 body.dark .rsvp-head .rsvp-unit { color: #a1a1a6; }
 @media (max-width: 640px) {
   .rsvp-board { grid-template-columns: 1fr; padding: 1rem; overflow-y: auto; }
-  .rsvp-col { overflow: visible; }
+  /* 세로로 쌓을 때는 칸 높이를 내용만큼 준다. flex:1 인 채로 두면 이름 영역 높이가 0으로 계산되어
+     참석 칸의 이름이 불참 칸 위로 겹쳤다 */
+  .rsvp-col { display: block; overflow: visible; }
+  .rsvp-names { flex: none; }
   .rsvp-board, .present-wrap:has(#sidePanel.hidden) .rsvp-board { padding-right: 1rem; }
   .rsvp-col.is-no { margin-bottom: 14rem; }
   .rsvp-names { overflow: visible; }
@@ -602,3 +605,11 @@ body.dark .rsvp-head .rsvp-unit { color: #a1a1a6; }
 .session-status.is-closed { background: #ececee; color: #48484d; }
 .session-status.is-before { background: #e8f1fb; color: #00408a; }
 .session-status.is-gone { background: #fdecea; color: #a1241a; }
+
+/* 좁은 화면의 발표 화면 머리말: 참여 시간 배지와 응답 인원이 한 줄에 안 들어가 오른쪽이 잘렸다 → 줄을 바꾼다 */
+@media (max-width: 640px) {
+  .present-stats { flex-wrap: wrap; white-space: normal; gap: 0.35rem 0.9rem; align-items: center; }
+  .window-badge { font-size: 0.78rem; white-space: nowrap; }
+  .rsvp-page .present-stats { font-size: 1rem; }
+  .rsvp-page .present-stats strong { font-size: 1.4em; }
+}

@@ -6,7 +6,7 @@
   <title>세션 만들기 (강사용) - 실시간 워드클라우드</title>
   <meta name="robots" content="noindex" />
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-  <link rel="stylesheet" href="./css/style.css?v=21" />
+  <link rel="stylesheet" href="./css/style.css?v=22" />
   <style>
     .session-list { display: flex; flex-direction: column; gap: 0.6rem; }
     /* 위: 코드 배지 + 이름·질문 / 아래: 버튼 — 이름이 버튼에 밀려 잘리지 않도록 */
@@ -80,6 +80,21 @@
     .session-edit .session-actions { justify-content: flex-end; border-top: 0; padding-top: 0; }
     .session-edit .status-msg { margin: 0; }
     .empty-list { color: var(--muted); font-size: 0.9rem; text-align: center; padding: 1rem 0; }
+    /* 좁은 화면(휴대폰 · 접는 폰의 바깥 화면): 코드 배지를 위로 올려 이름이 제 폭을 다 쓰게 한다.
+       상태 알약은 카드 오른쪽 위에 둔다(이름이 두 줄로 꺾이면 알약이 어중간한 줄에 걸렸다) */
+    @media (max-width: 640px) {
+      .session-item {
+        position: relative;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "badge" "info" "actions";
+        gap: 0.5rem;
+      }
+      .session-code-badge { justify-self: start; }
+      .session-status { position: absolute; top: 0.95rem; right: 0.95rem; margin-left: 0; }
+      .session-q { white-space: normal; overflow: visible; word-break: keep-all; line-height: 1.4; }
+      .session-actions { justify-content: flex-start; }
+      .found-count { font-size: 0.8rem; }
+    }
   </style>
 </head>
 <body class="auth-pending">
