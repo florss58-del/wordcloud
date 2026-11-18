@@ -554,8 +554,9 @@ body.dark .rsvp-head .rsvp-unit { color: #a1a1a6; }
   .rsvp-col { display: block; overflow: visible; min-height: auto; }
   .rsvp-col + .rsvp-col { margin-top: 1rem; }
   .rsvp-names { overflow: visible; }
-  /* 강사 휴대폰에서는 작은 QR 상자가 이름을 가린다. 숨기고, 필요하면 「QR 크게」를 쓴다 */
-  .rsvp-page .present-side { display: none; }
+  /* 작은 QR 상자는 휴대폰에서 처음에 숨겨 둔다(이름을 가린다. present.html이 hidden을 붙인다).
+     「QR 보이기」로 꺼내면 마지막 이름이 상자 위로 올라오게 아래에 여백을 준다 */
+  .rsvp-page .present-wrap:has(#sidePanel:not(.hidden)) .rsvp-board { padding-bottom: 15rem; }
 }
 
 /* 안내문 (join.html) — 강사가 적은 일시·장소·준비물·회차별 내용. 줄바꿈을 그대로 살린다 */

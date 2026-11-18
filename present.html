@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>발표 화면 - 실시간 워드클라우드</title>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-  <link rel="stylesheet" href="./css/style.css?v=23" />
+  <link rel="stylesheet" href="./css/style.css?v=24" />
 </head>
 <body class="present-page auth-pending">
   <div class="present-wrap">
@@ -429,12 +429,14 @@
     qrFocus.addEventListener("click", () => qrFocus.classList.add("hidden"));
 
     const qrToggleBtn = document.getElementById("qrToggleBtn");
-    qrToggleBtn.addEventListener("click", () => {
-      const panel = document.getElementById("sidePanel");
-      const hidden = panel.classList.toggle("hidden");
+    function setQrPanelHidden(hidden) {
+      document.getElementById("sidePanel").classList.toggle("hidden", hidden);
       qrToggleBtn.innerHTML = hidden ? ICONS.eye + " QR 보이기" : ICONS.eyeOff + " QR 숨기기";
       scheduleRender(); // QR 자리를 비우거나 다시 쓴다
       if (rsvpMode) fitRosterNames();   // 명단 칸 폭이 바뀐다
+    }
+    qrToggleBtn.addEventListener("click", () => {
+      setQrPanelHidden(!document.getElementById("sidePanel").classList.contains("hidden"));
     });
 
     // 질문·날짜가 함께 담긴 PNG로 저장
@@ -763,6 +765,8 @@
           if (el) el.classList.add("hidden");
         });
         document.getElementById("rosterCsvBtn").classList.remove("hidden");
+        // 휴대폰에서는 작은 QR 상자가 이름을 가리므로 처음에 숨겨 둔다. 「QR 보이기」로 다시 꺼낼 수 있다
+        if (window.innerWidth <= 640) setQrPanelHidden(true);
         // 머리말에는 "응답 N명"만 크게 둔다. 참석·불참 숫자는 아래 두 칸의 제목에 있다
         document.body.classList.add("rsvp-page");
         participantCountEl.parentElement.firstChild.nodeValue = "응답 ";
@@ -892,6 +896,30 @@
       if (rsvpMode) fitRosterNames();
       if (!qrFocus.classList.contains("hidden")) openQrFocus();
     });
+    /* 뒤로 가기는 덮개만 닫는다 ──
+       QR 크게 · 결과 보기 · 단어 강조는 새 화면이 아니라 같은 화면 위의 덮개라, 휴대폰의 뒤로 가기가
+       덮개를 닫지 않고 발표 화면을 떠나 관리 화면으로 갔다(2026-11-18). 덮개가 열릴 때 기록을 한 칸 쌓고,
+       뒤로 가기가 오면 덮개를 닫는다. 버튼·화면 누르기로 닫았으면 쌓은 칸을 도로 뺀다 */
+    const OVERLAY_IDS = ["qrFocus", "resultsOverlay", "wordFocus"];
+    let overlayInHistory = false;
+    const anyOverlayOpen = () => OVERLAY_IDS.some((id) => !document.getElementById(id).classList.contains("hidden"));
+    function syncOverlayHistory() {
+      if (anyOverlayOpen() && !overlayInHistory) {
+        history.pushState({ overlay: true }, "");
+        overlayInHistory = true;
+      } else if (!anyOverlayOpen() && overlayInHistory) {
+        overlayInHistory = false;
+        history.back();   // 같은 화면 안의 기록이라 페이지는 그대로다
+      }
+    }
+    const overlayWatcher = new MutationObserver(syncOverlayHistory);
+    OVERLAY_IDS.forEach((id) => overlayWatcher.observe(document.getElementById(id), { attributes: true, attributeFilter: ["class"] }));
+    window.addEventListener("popstate", () => {
+      if (!overlayInHistory) return;
+      overlayInHistory = false;   // 뒤로 가기가 이미 칸을 뺐다
+      OVERLAY_IDS.forEach((id) => document.getElementById(id).classList.add("hidden"));
+    });
+
     requireInstructor(init); // 강사 로그인 후 발표 화면 시작
   </script>
 </body>
