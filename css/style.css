@@ -548,14 +548,14 @@ body.dark .rsvp-none { color: #a1a1a6; }
 body.dark .rsvp-head { border-color: #3a3a3c; }
 body.dark .rsvp-head .rsvp-unit { color: #a1a1a6; }
 @media (max-width: 640px) {
-  .rsvp-board { grid-template-columns: 1fr; padding: 1rem; overflow-y: auto; }
-  /* 세로로 쌓을 때는 칸 높이를 내용만큼 준다. flex:1 인 채로 두면 이름 영역 높이가 0으로 계산되어
-     참석 칸의 이름이 불참 칸 위로 겹쳤다 */
-  .rsvp-col { display: block; overflow: visible; }
-  .rsvp-names { flex: none; }
-  .rsvp-board, .present-wrap:has(#sidePanel.hidden) .rsvp-board { padding-right: 1rem; }
-  .rsvp-col.is-no { margin-bottom: 14rem; }
+  /* 휴대폰: 명단판을 통째로 스크롤한다. 격자로 쌓으면 칸이 화면 높이에 맞춰 눌리고
+     이름이 칸 밖으로 넘쳐 아래 칸 위에 겹쳤다 (2026-11-17 실제 수업. 낮은 화면에서만 드러난다) */
+  .rsvp-board, .present-wrap:has(#sidePanel.hidden) .rsvp-board { display: block; padding: 1rem; overflow-y: auto; }
+  .rsvp-col { display: block; overflow: visible; min-height: auto; }
+  .rsvp-col + .rsvp-col { margin-top: 1rem; }
   .rsvp-names { overflow: visible; }
+  /* 강사 휴대폰에서는 작은 QR 상자가 이름을 가린다. 숨기고, 필요하면 「QR 크게」를 쓴다 */
+  .rsvp-page .present-side { display: none; }
 }
 
 /* 안내문 (join.html) — 강사가 적은 일시·장소·준비물·회차별 내용. 줄바꿈을 그대로 살린다 */
